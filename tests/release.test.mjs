@@ -45,6 +45,7 @@ test("release contains the static app and bookmarklet bridge", async () => {
 test("release uses subpath-safe assets and stays within the bookmarklet budget", async () => {
   const html = await readFile(path.join(output, "index.html"), "utf8");
   assert.match(html, /(?:src|href)="\.\/assets\//, "Vite assets must be relative for GitHub Pages");
+  assert.match(html, /rel="icon"[^>]+href="\.\/zenexpander-leaf\.png"/, "Leaf favicon must be subpath-safe");
   assert.doesNotMatch(html, /(?:src|href)="\/assets\//, "Root-relative assets break repository Pages sites");
 
   const bookmarklet = (await readFile(path.join(output, "zenexpander-bookmarklet.txt"), "utf8")).trim();
