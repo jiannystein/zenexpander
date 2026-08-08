@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex">
+    <title>Connecting ZenExpander</title>
+    <style>
+      :root { color-scheme: light; font: 16px/1.5 system-ui, sans-serif; }
+      body { display:grid; min-height:100vh; margin:0; place-items:center; background:#f8f3fb; color:#281431; }
+      main { width:min(30rem,calc(100% - 2rem)); padding:1.5rem; border:1px solid #d8cfdf; border-radius:.75rem; background:white; }
+      h1 { margin:0 0 .5rem; font:700 1.5rem/1.2 Georgia,serif; }
+      p { margin:0; color:#6f6476; }
+      p[data-tone="error"] { color:#a2304b; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Connecting ZenExpander</h1>
+      <p id="bridge-status">Linking this page to your open configurator…</p>
+    </main>
+    <script src="./zenexpander-bridge.js"></script>
+  </body>
+</html>

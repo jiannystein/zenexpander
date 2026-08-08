@@ -1,0 +1,22 @@
+node_modules/
+dist/
+.vite/
+*.log
+.hallmark/
+.openai/
+.codex/
+.env*
+!.env.example
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local design/process notes are intentionally not part of the public product.
+AGENTS.md
+design-qa.md
+
+# User-generated or intermediate configuration/build data.
+zenexpander-config.json
+*.local.json
+public/zenexpander-bookmarklet.min.js

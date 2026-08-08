@@ -1,0 +1,40 @@
+/* Hallmark · macrostructure: Workbench · N9 edge-aligned navigation; no footer because this is a single-screen application workspace
+ * theme: custom · vibe: "velvet softness, exact enterprise utility" · paper: oklch(97.8% 0.009 309) · accent: oklch(50% 0.105 178)
+ * display: Newsreader · body: IBM Plex Sans · axes: light / roman-serif / chromatic-teal
+ * studied: no · context: explicit selected Product Design image · v1.1.0 · enrichment: none (typography only)
+ */
+:root {
+  --paper: oklch(97.8% 0.009 309);
+  --paper-2: oklch(96.1% 0.012 309);
+  --surface: oklch(99.4% 0.006 309);
+  --on-accent: oklch(98.5% 0.008 309);
+  --ink: oklch(22% 0.066 309);
+  --ink-soft: oklch(39% 0.045 306);
+  --muted: oklch(44% 0.03 305);
+  --accent: oklch(50% 0.105 178);
+  --accent-soft: oklch(82% 0.07 178);
+  --teal-wash: oklch(95.5% 0.025 178);
+  --focus: oklch(50% 0.105 178);
+  --danger: oklch(48% 0.17 18);
+  --danger-wash: oklch(96% 0.025 18);
+  --rule: oklch(86% 0.018 306);
+  --rule-strong: oklch(76% 0.026 306);
+  --radius-sm: 5px;
+  --space-3xs: 4px;
+  --space-2xs: 8px;
+  --space-xs: 12px;
+  --space-sm: 16px;
+  --space-md: 20px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 40px;
+  --space-3xl: 48px;
+  --space-4xl: 64px;
+  --space-5xl: 80px;
+  --font-display: "Newsreader", Georgia, serif;
+  --font-sans: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --shadow-soft: 0 18px 50px oklch(22% 0.066 309 / 0.09);
+  --shadow-float: 0 16px 40px oklch(22% 0.066 309 / 0.18);
+  --duration-fast: 180ms;
+  --ease-out: cubic-bezier(.22, .82, .36, 1);
+}
