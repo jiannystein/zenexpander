@@ -5,6 +5,7 @@ import {
   cloneConfig,
   displayTemplate,
   importPreview,
+  normalizeConfig,
   renameChoiceField,
   renderChoice,
   searchExpansions,
@@ -41,6 +42,20 @@ test("renaming a choice field keeps its sentence reference in sync", () => {
   const duplicate = renameChoiceField(choice, meal.id, "Side");
   assert.equal(duplicate.valid, false);
   assert.match(duplicate.error, /already exists/i);
+});
+
+test("line breaks survive editing, JSON export, normalization, and choice rendering", () => {
+  const direct = cloneConfig(DEFAULT_CONFIG);
+  direct.expansions[0].text = "Hello,\r\n\r\nHow are you?";
+  const restored = normalizeConfig(JSON.parse(JSON.stringify(direct)));
+  assert.equal(restored.expansions[0].text, "Hello,\n\nHow are you?");
+
+  const choice = cloneConfig(DEFAULT_CONFIG.expansions.find((item) => item.type === "choice"));
+  choice.template = "Please select {{Meal}}\r\nThen {{Side}}\r\nand confirm.";
+  const laymanTemplate = displayTemplate(choice.template);
+  assert.equal(laymanTemplate, "Please select [Meal]\nThen [Side]\nand confirm.");
+  assert.equal(storedTemplate(laymanTemplate), "Please select {{Meal}}\nThen {{Side}}\nand confirm.");
+  assert.equal(renderChoice(choice, { Meal: "Turkey", Side: "Rice" }), "Please select Turkey\nThen Rice\nand confirm.");
 });
 
 test("search prefers an exact shortcut and searches labels", () => {

@@ -101,6 +101,46 @@ test("choice editor supports consistent chips, field renaming, independent discl
   assert.match(styles, /text-overflow: ellipsis/);
 });
 
+test("configurator and widget preserve user-authored line breaks", async () => {
+  const app = await readFile(path.join(root, "src", "App.jsx"), "utf8");
+  const styles = await readFile(path.join(root, "src", "styles.css"), "utf8");
+  const runtime = await readFile(path.join(root, "src", "bookmarklet", "runtime.js"), "utf8");
+  assert.match(app, /Keep a recovery copy\./);
+  assert.doesNotMatch(app, /Install bookmarklet/);
+  assert.match(app, /\(\{field\.options\.length\}/);
+  assert.match(styles, /\.sentence-preview[^}]*white-space: pre-wrap/);
+  assert.match(styles, /\.preview-sentence[^}]*white-space: pre-wrap/);
+  assert.match(styles, /\.scratchpad[^}]*white-space: pre-wrap/);
+  assert.match(runtime, /function normalizeNewlines/);
+  assert.match(runtime, /function containsInsertedText/);
+  assert.match(runtime, /blocks\.every\(\(node\) => node\.nodeType === 1 && \/\^\(DIV\|P\)\$\//);
+  assert.match(runtime, /\.preview\{[^}]*white-space:pre-wrap/);
+  assert.match(runtime, /target instanceof HTMLInputElement && text\.includes\("\\n"\)/);
+});
+
+test("runtime reads Google Chat block editors as the same logical newlines", async () => {
+  const runtime = await readFile(path.join(root, "src", "bookmarklet", "runtime.js"), "utf8");
+  const helpers = runtime.slice(
+    runtime.indexOf("function normalizeNewlines"),
+    runtime.indexOf("function waitForEditor"),
+  );
+  const context = {
+    HTMLInputElement: class HTMLInputElement {},
+    HTMLTextAreaElement: class HTMLTextAreaElement {},
+  };
+  vm.runInNewContext(`${helpers}\nthis.readEditor = editableText; this.containsText = containsInsertedText;`, context);
+  const googleChatEditor = {
+    childNodes: [
+      { nodeType: 1, nodeName: "DIV", textContent: "First line", innerText: "First line" },
+      { nodeType: 1, nodeName: "DIV", textContent: "", innerText: "" },
+      { nodeType: 1, nodeName: "DIV", textContent: "Third line", innerText: "Third line" },
+    ],
+  };
+
+  assert.equal(context.readEditor(googleChatEditor), "First line\n\nThird line");
+  assert.equal(context.containsText(googleChatEditor, "First line\r\n\r\nThird line"), true);
+});
+
 test("runtime reconstructs a live editor range and verifies insertion", async () => {
   const runtime = await readFile(path.join(root, "src", "bookmarklet", "runtime.js"), "utf8");
   assert.match(runtime, /function rangeFromOffsets/);
@@ -108,6 +148,6 @@ test("runtime reconstructs a live editor range and verifies insertion", async ()
   assert.match(runtime, /const liveRange = rangeFromOffsets/);
   assert.match(runtime, /await waitForEditor\(\)/);
   assert.match(runtime, /setTimeout\(resolve, 260\)/);
-  assert.match(runtime, /editableText\(target\)\.includes\(text\)/);
+  assert.match(runtime, /containsInsertedText\(target, text\)/);
   assert.match(runtime, /press Ctrl\+V to replace the shortcut/);
 });

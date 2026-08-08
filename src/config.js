@@ -67,12 +67,16 @@ export function normalizeShortcut(value) {
     .replace(/[^a-z0-9_-]/g, "");
 }
 
+export function normalizeNewlines(value) {
+  return String(value ?? "").replace(/\r\n?/g, "\n");
+}
+
 export function displayTemplate(template) {
-  return String(template ?? "").replace(/\{\{\s*([^{}]+?)\s*\}\}/g, "[$1]");
+  return normalizeNewlines(template).replace(/\{\{\s*([^{}]+?)\s*\}\}/g, "[$1]");
 }
 
 export function storedTemplate(template) {
-  return String(template ?? "").replace(/\[\s*([^\[\]]+?)\s*\]/g, "{{$1}}");
+  return normalizeNewlines(template).replace(/\[\s*([^\[\]]+?)\s*\]/g, "{{$1}}");
 }
 
 export function renameChoiceField(expansion, fieldId, value) {
@@ -95,7 +99,7 @@ export function renameChoiceField(expansion, fieldId, value) {
 }
 
 export function templateParts(template) {
-  const source = String(template ?? "");
+  const source = normalizeNewlines(template);
   const parts = [];
   const pattern = /\{\{\s*([^{}]+?)\s*\}\}/g;
   let cursor = 0;
@@ -110,9 +114,9 @@ export function templateParts(template) {
 }
 
 export function renderChoice(expansion, values = {}) {
-  return String(expansion?.template ?? "").replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (_match, name) => {
+  return normalizeNewlines(expansion?.template).replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (_match, name) => {
     const field = expansion?.fields?.find((item) => item.name === name);
-    return String(values[name] ?? field?.options?.[0] ?? "");
+    return normalizeNewlines(values[name] ?? field?.options?.[0] ?? "");
   });
 }
 
@@ -142,7 +146,7 @@ export function searchExpansions(config, query) {
 }
 
 function cleanString(value, maximum = 10_000) {
-  return typeof value === "string" ? value.slice(0, maximum) : "";
+  return typeof value === "string" ? normalizeNewlines(value).slice(0, maximum) : "";
 }
 
 function validateExpansion(expansion, index, shortcuts) {

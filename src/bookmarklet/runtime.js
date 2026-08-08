@@ -38,16 +38,20 @@ function labelForType(type) {
   return type === "choice" ? "Choices" : type === "random" ? "Random" : "Direct";
 }
 
+function normalizeNewlines(value) {
+  return String(value ?? "").replace(/\r\n?/g, "\n");
+}
+
 function renderChoice(expansion, values = {}) {
-  return String(expansion?.template ?? "").replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (_match, name) => {
+  return normalizeNewlines(expansion?.template).replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (_match, name) => {
     const field = expansion.fields?.find((item) => item.name === name);
-    return String(values[name] ?? field?.options?.[0] ?? "");
+    return normalizeNewlines(values[name] ?? field?.options?.[0] ?? "");
   });
 }
 
 function preview(expansion) {
-  if (expansion.type === "direct") return expansion.text;
-  if (expansion.type === "random") return expansion.variants?.[0] ?? "";
+  if (expansion.type === "direct") return normalizeNewlines(expansion.text);
+  if (expansion.type === "random") return normalizeNewlines(expansion.variants?.[0] ?? "");
   return renderChoice(expansion);
 }
 
@@ -132,9 +136,21 @@ function rangeFromOffsets(target, start, end) {
 }
 
 function editableText(target) {
-  return target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement
-    ? target.value
-    : target.textContent ?? "";
+  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+    return normalizeNewlines(target.value);
+  }
+  const blocks = [...(target?.childNodes ?? [])];
+  if (blocks.length && blocks.every((node) => node.nodeType === 1 && /^(DIV|P)$/.test(node.nodeName))) {
+    return normalizeNewlines(blocks.map((node) => {
+      if (!node.textContent) return "";
+      return normalizeNewlines(node.innerText ?? node.textContent).replace(/\n$/, "");
+    }).join("\n"));
+  }
+  return normalizeNewlines(target?.innerText ?? target?.textContent ?? "");
+}
+
+function containsInsertedText(target, text) {
+  return editableText(target).includes(normalizeNewlines(text));
 }
 
 function waitForEditor() {
@@ -168,9 +184,9 @@ function styleText() {
     .result:hover,.result[data-active="true"]{background:#e5f5f3}
     .result strong{font-weight:700}.result span{grid-column:1;color:#726779;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.result em{grid-row:1/3;grid-column:2;align-self:center;color:#0a8276;font-style:normal;font-size:12px}
     .empty{padding:18px 8px;color:#726779;text-align:center}
-    .choice-title{margin:0 0 6px;font:700 22px/1.2 Georgia,serif}.sentence{margin:0 0 16px;color:#594c61}
+    .choice-title{margin:0 0 6px;font:700 22px/1.2 Georgia,serif}.sentence{margin:0 0 16px;color:#594c61;white-space:pre-wrap;overflow-wrap:anywhere}
     .fields{display:grid;gap:12px}.field{display:grid;gap:5px}.field label{font-weight:700}.field select{height:44px;padding:0 10px;border:1px solid #7f7287;border-radius:6px;background:#fff;color:#281431}
-    .preview{margin:16px 0;padding:12px;border-left:3px solid #0a8276;background:#f2fbfa;font:600 16px/1.5 Georgia,serif}
+    .preview{margin:16px 0;padding:12px;border-left:3px solid #0a8276;background:#f2fbfa;font:600 16px/1.5 Georgia,serif;white-space:pre-wrap;overflow-wrap:anywhere}
     .actions{margin-top:14px}.primary{display:inline-flex;width:100%;min-height:44px;align-items:center;justify-content:center;gap:8px;padding:0 14px;border:1px solid #0a8276;border-radius:6px;background:#0a8276;color:#fff;font-weight:700}.primary kbd{min-width:42px;padding:3px 7px;border:1px solid #ffffff94;border-bottom-width:2px;border-radius:5px;background:#ffffff1f;color:inherit;font:700 11px/1.35 Arial,sans-serif;text-align:center}
     .restart{min-height:44px;padding:0 14px;border:1px solid #0a8276;border-radius:6px;background:#0a8276;color:#fff;font-weight:700}
     @media(max-width:480px){.launcher{right:14px;bottom:14px}.panel{right:12px;bottom:82px}}
@@ -602,6 +618,7 @@ class ZenRuntime {
   }
 
   async insert(text) {
+    text = normalizeNewlines(text);
     const range = this.savedRange;
     const target = range?.target;
     const reason = sensitiveReason(target);
@@ -614,10 +631,12 @@ class ZenRuntime {
     try {
       target.focus();
       if (range.kind === "text") {
-        target.setRangeText(text, range.start, range.end, "end");
-        target.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text }));
-        await waitForEditor();
-        inserted = editableText(target) !== before && editableText(target).includes(text);
+        if (!(target instanceof HTMLInputElement && text.includes("\n"))) {
+          target.setRangeText(text, range.start, range.end, "end");
+          target.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text }));
+          await waitForEditor();
+          inserted = editableText(target) !== before && containsInsertedText(target, text);
+        }
       } else {
         const selection = getSelection();
         const liveRange = rangeFromOffsets(target, range.start, range.end);
@@ -625,8 +644,8 @@ class ZenRuntime {
         selection.addRange(liveRange);
         inserted = Boolean(document.execCommand?.("insertText", false, text));
         await waitForEditor();
-        inserted = inserted && editableText(target) !== before && editableText(target).includes(text);
-        if (!inserted && editableText(target) === before) {
+        inserted = inserted && editableText(target) !== before && containsInsertedText(target, text);
+        if (!inserted && editableText(target) === before && !text.includes("\n")) {
           const fallbackRange = rangeFromOffsets(target, range.start, range.end);
           selection.removeAllRanges();
           selection.addRange(fallbackRange);
@@ -639,7 +658,7 @@ class ZenRuntime {
           selection.addRange(fallbackRange);
           target.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text }));
           await waitForEditor();
-          inserted = editableText(target) !== before && editableText(target).includes(text);
+          inserted = editableText(target) !== before && containsInsertedText(target, text);
         }
       }
     } catch {

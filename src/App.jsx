@@ -3,7 +3,6 @@ import {
   CaretDown,
   Check,
   DotsSix,
-  DotsSixVertical,
   DownloadSimple,
   FileText,
   Keyboard,
@@ -29,6 +28,7 @@ import {
   importPreview,
   makeId,
   normalizeConfig,
+  normalizeNewlines,
   normalizeShortcut,
   renameChoiceField,
   renderChoice,
@@ -88,7 +88,7 @@ function Onboarding({ onCreate, onImport, error }) {
   );
 }
 
-function Header({ page, onPage, onImport, onExport, onInstall, savedLabel, bridge }) {
+function Header({ page, onPage, onImport, onExport, savedLabel, bridge }) {
   return (
     <>
       <header className="app-header">
@@ -112,12 +112,12 @@ function Header({ page, onPage, onImport, onExport, onInstall, savedLabel, bridg
           <b>Never uploaded</b>
         </div>
         <div className="header-actions">
-          <label className="text-action file-button">
+          <p className="header-backup-hint"><strong>Keep a recovery copy.</strong><span>Export before switching browsers or clearing site data.</span></p>
+          <label className="text-action file-button" aria-label="Import config">
             <DownloadSimple /> Import
             <input type="file" accept="application/json,.json" onChange={onImport} />
           </label>
-          <button className="text-action" onClick={onExport}><UploadSimple /> Export</button>
-          <button className="install-action" onClick={onInstall}><LinkSimple /> Install bookmarklet <DotsSixVertical /></button>
+          <button className="text-action" aria-label="Export config" onClick={onExport}><UploadSimple /> Export</button>
         </div>
       </header>
     </>
@@ -239,6 +239,7 @@ function ChoiceField({ field, position, open, onToggle, onChange, onRename, onDe
   const [nameError, setNameError] = useState("");
   const skipRenameCommit = useRef(false);
   const errorId = `${field.id}-name-error`;
+  const nameWidth = Math.min(240, Math.max(72, Math.ceil((draftName || field.name).length * 8.5 + 24)));
 
   useEffect(() => setDraftName(field.name), [field.name]);
 
@@ -264,39 +265,41 @@ function ChoiceField({ field, position, open, onToggle, onChange, onRename, onDe
         >
           <CaretDown />
         </button>
-        <label className="choice-name-wrap">
-          <span className="visually-hidden">Choice field {position} name</span>
-          <input
-            className="choice-field-name"
-            value={draftName}
-            aria-label={`Choice field ${position} name`}
-            aria-invalid={Boolean(nameError)}
-            aria-describedby={nameError ? errorId : undefined}
-            onChange={(event) => { setDraftName(event.target.value); setNameError(""); }}
-            onBlur={() => {
-              if (skipRenameCommit.current) {
-                skipRenameCommit.current = false;
-                return;
-              }
-              commitName();
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                event.currentTarget.blur();
-              }
-              if (event.key === "Escape") {
-                event.preventDefault();
-                skipRenameCommit.current = true;
-                setDraftName(field.name);
-                setNameError("");
-                event.currentTarget.blur();
-              }
-            }}
-          />
-          {nameError && <span className="choice-name-error" id={errorId} role="alert">{nameError}</span>}
-        </label>
-        <span className="choice-count">· {field.options.length} options</span>
+        <div className="choice-name-line">
+          <label className="choice-name-wrap" style={{ width: `${nameWidth}px` }}>
+            <span className="visually-hidden">Choice field {position} name</span>
+            <input
+              className="choice-field-name"
+              value={draftName}
+              aria-label={`Choice field ${position} name`}
+              aria-invalid={Boolean(nameError)}
+              aria-describedby={nameError ? errorId : undefined}
+              onChange={(event) => { setDraftName(event.target.value); setNameError(""); }}
+              onBlur={() => {
+                if (skipRenameCommit.current) {
+                  skipRenameCommit.current = false;
+                  return;
+                }
+                commitName();
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  event.currentTarget.blur();
+                }
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  skipRenameCommit.current = true;
+                  setDraftName(field.name);
+                  setNameError("");
+                  event.currentTarget.blur();
+                }
+              }}
+            />
+            {nameError && <span className="choice-name-error" id={errorId} role="alert">{nameError}</span>}
+          </label>
+          <span className="choice-count">({field.options.length} {field.options.length === 1 ? "option" : "options"})</span>
+        </div>
         <button className="icon-button" aria-label={`Delete ${field.name}`} onClick={onDelete}><Trash /></button>
       </div>
       {open && (
@@ -347,7 +350,12 @@ function ChoiceEditor({ expansion, onChange }) {
   });
   const deleteField = (field) => {
     const fields = expansion.fields.filter((item) => item.id !== field.id);
-    const template = expansion.template.replaceAll(`{{${field.name}}}`, "").replace(/\s+/g, " ").trim();
+    const template = normalizeNewlines(expansion.template)
+      .replaceAll(`{{${field.name}}}`, "")
+      .replace(/[^\S\n]{2,}/g, " ")
+      .replace(/[^\S\n]+\n/g, "\n")
+      .replace(/\n[^\S\n]+/g, "\n")
+      .trim();
     onChange({ fields, template });
     setOpenFields((current) => {
       const next = new Set(current);
@@ -411,7 +419,7 @@ function DirectEditor({ expansion, onChange }) {
   return (
     <label className="plain-editor">
       <span>Text to paste</span>
-      <textarea value={expansion.text ?? ""} onChange={(event) => onChange({ text: event.target.value })} />
+      <textarea value={expansion.text ?? ""} onChange={(event) => onChange({ text: normalizeNewlines(event.target.value) })} />
       <small>Plain text is inserted immediately after you choose this expansion.</small>
     </label>
   );
@@ -593,8 +601,9 @@ function Scratchpad({ config, onToast }) {
   const insert = useCallback((text) => {
     const editor = editorRef.current;
     if (!editor || !trigger) return;
-    const source = editor.textContent ?? "";
-    editor.textContent = `${source.slice(0, Math.max(0, source.length - trigger.length))}${text}`;
+    const source = normalizeNewlines(editor.innerText ?? editor.textContent ?? "");
+    const finalText = normalizeNewlines(text);
+    editor.textContent = `${source.slice(0, Math.max(0, source.length - trigger.length))}${finalText}`;
     setTrigger(null);
     setChoice(null);
     editor.focus();
@@ -626,7 +635,7 @@ function Scratchpad({ config, onToast }) {
         role="textbox"
         aria-label="ZenExpander test scratchpad"
         data-placeholder="Type ;hello here…"
-        onInput={(event) => inspect(event.currentTarget.textContent ?? "")}
+        onInput={(event) => inspect(normalizeNewlines(event.currentTarget.innerText ?? event.currentTarget.textContent ?? ""))}
       />
       {trigger && !choice && (
         <div className="scratch-results" role="listbox" aria-label="Matching scratchpad expansions">
@@ -934,7 +943,6 @@ export function App() {
         onPage={setPage}
         onImport={handleImport}
         onExport={exportConfig}
-        onInstall={() => setPage("setup")}
         savedLabel={saveState.includes("Saved") || saveState.includes("Autosaved") ? "Saved on this browser" : saveState}
         bridge={bridge}
       />
