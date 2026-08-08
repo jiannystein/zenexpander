@@ -30,6 +30,7 @@ import {
   makeId,
   normalizeConfig,
   normalizeShortcut,
+  renameChoiceField,
   renderChoice,
   searchExpansions,
   storedTemplate,
@@ -212,12 +213,15 @@ function SentencePreview({ expansion, values, onValue, interactive = true }) {
         const field = expansion.fields.find((item) => item.name === part.value);
         if (!field) return <span className="missing-field" key={`${part.value}-${index}`}>[{part.value}]</span>;
         if (!interactive) return <button className="sentence-token" type="button" key={`${part.value}-${index}`}>[{part.value}] <CaretDown /></button>;
-        const fieldWidth = Math.min(140, Math.max(96, Math.max(...field.options.map((option) => option.length), field.name.length) * 8 + 38));
+        const selectedValue = values[field.name] ?? field.options[0] ?? "";
+        const longestLabel = Math.max(field.name.length, ...field.options.map((option) => String(option).length));
+        const fieldWidth = Math.min(260, Math.max(112, Math.ceil(longestLabel * 10.5 + 52)));
         return (
           <span className="inline-select" key={`${part.value}-${index}`} style={{ "--choice-width": `${fieldWidth}px` }}>
             <select
               aria-label={field.name}
-              value={values[field.name] ?? field.options[0] ?? ""}
+              title={selectedValue}
+              value={selectedValue}
               onChange={(event) => onValue(field.name, event.target.value)}
             >
               {field.options.map((option, optionIndex) => <option key={`${option}-${optionIndex}`}>{option}</option>)}
@@ -230,13 +234,69 @@ function SentencePreview({ expansion, values, onValue, interactive = true }) {
   );
 }
 
-function ChoiceField({ field, open, onToggle, onChange, onDelete }) {
+function ChoiceField({ field, position, open, onToggle, onChange, onRename, onDelete }) {
+  const [draftName, setDraftName] = useState(field.name);
+  const [nameError, setNameError] = useState("");
+  const skipRenameCommit = useRef(false);
+  const errorId = `${field.id}-name-error`;
+
+  useEffect(() => setDraftName(field.name), [field.name]);
+
+  const commitName = () => {
+    const result = onRename(draftName);
+    if (!result.valid) {
+      setNameError(result.error);
+      return;
+    }
+    setDraftName(result.name);
+    setNameError("");
+  };
+
   return (
     <section className={`choice-field ${open ? "is-open" : ""}`}>
       <div className="choice-field-head">
-        <button className="choice-disclosure" onClick={onToggle} aria-expanded={open}>
-          <CaretDown /> <strong>{field.name}</strong> <span>· {field.options.length} options</span>
+        <button
+          className="choice-disclosure"
+          onClick={onToggle}
+          aria-expanded={open}
+          aria-label={`${open ? "Collapse" : "Expand"} ${field.name} choices`}
+          title={`${open ? "Collapse" : "Expand"} ${field.name}`}
+        >
+          <CaretDown />
         </button>
+        <label className="choice-name-wrap">
+          <span className="visually-hidden">Choice field {position} name</span>
+          <input
+            className="choice-field-name"
+            value={draftName}
+            aria-label={`Choice field ${position} name`}
+            aria-invalid={Boolean(nameError)}
+            aria-describedby={nameError ? errorId : undefined}
+            onChange={(event) => { setDraftName(event.target.value); setNameError(""); }}
+            onBlur={() => {
+              if (skipRenameCommit.current) {
+                skipRenameCommit.current = false;
+                return;
+              }
+              commitName();
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                event.currentTarget.blur();
+              }
+              if (event.key === "Escape") {
+                event.preventDefault();
+                skipRenameCommit.current = true;
+                setDraftName(field.name);
+                setNameError("");
+                event.currentTarget.blur();
+              }
+            }}
+          />
+          {nameError && <span className="choice-name-error" id={errorId} role="alert">{nameError}</span>}
+        </label>
+        <span className="choice-count">· {field.options.length} options</span>
         <button className="icon-button" aria-label={`Delete ${field.name}`} onClick={onDelete}><Trash /></button>
       </div>
       {open && (
@@ -268,23 +328,39 @@ function ChoiceField({ field, open, onToggle, onChange, onDelete }) {
 }
 
 function ChoiceEditor({ expansion, onChange }) {
-  const [openField, setOpenField] = useState(expansion.fields[0]?.id ?? "");
+  const [openFields, setOpenFields] = useState(() => new Set(expansion.fields[0]?.id ? [expansion.fields[0].id] : []));
   const [editingSentence, setEditingSentence] = useState(false);
   const [addingField, setAddingField] = useState(false);
   const [fieldName, setFieldName] = useState("");
 
   const updateField = (field) => onChange({ fields: expansion.fields.map((item) => item.id === field.id ? field : item) });
+  const renameField = (field, name) => {
+    const result = renameChoiceField(expansion, field.id, name);
+    if (result.valid) onChange({ fields: result.fields, template: result.template });
+    return result;
+  };
+  const toggleField = (fieldId) => setOpenFields((current) => {
+    const next = new Set(current);
+    if (next.has(fieldId)) next.delete(fieldId);
+    else next.add(fieldId);
+    return next;
+  });
   const deleteField = (field) => {
     const fields = expansion.fields.filter((item) => item.id !== field.id);
     const template = expansion.template.replaceAll(`{{${field.name}}}`, "").replace(/\s+/g, " ").trim();
     onChange({ fields, template });
+    setOpenFields((current) => {
+      const next = new Set(current);
+      next.delete(field.id);
+      return next;
+    });
   };
   const addField = () => {
     const name = fieldName.trim().replace(/[\[\]{}]/g, "");
     if (!name || expansion.fields.some((item) => item.name.toLowerCase() === name.toLowerCase())) return;
     const field = { id: makeId("field"), name, options: ["First choice", "Second choice"] };
     onChange({ fields: [...expansion.fields, field], template: `${expansion.template.trim()} {{${name}}}` });
-    setOpenField(field.id);
+    setOpenFields((current) => new Set([...current, field.id]));
     setFieldName("");
     setAddingField(false);
   };
@@ -305,13 +381,15 @@ function ChoiceEditor({ expansion, onChange }) {
         </label>
       )}
       <div className="choice-field-list">
-        {expansion.fields.map((field) => (
+        {expansion.fields.map((field, index) => (
           <ChoiceField
             key={field.id}
             field={field}
-            open={openField === field.id}
-            onToggle={() => setOpenField(openField === field.id ? "" : field.id)}
+            position={index + 1}
+            open={openFields.has(field.id)}
+            onToggle={() => toggleField(field.id)}
             onChange={updateField}
+            onRename={(name) => renameField(field, name)}
             onDelete={() => deleteField(field)}
           />
         ))}
@@ -469,7 +547,7 @@ function ExpansionsPage({ config, setConfig, savedConfig, onSave, onDiscard, sav
         <main className="editor-pane">
           <h1>What should {config.prefix}{expansion.shortcut || "shortcut"} say?</h1>
           <ExpansionBasics config={config} expansion={expansion} onChange={updateExpansion} />
-          {expansion.type === "choice" && <ChoiceEditor expansion={expansion} onChange={updateExpansion} />}
+          {expansion.type === "choice" && <ChoiceEditor key={expansion.id} expansion={expansion} onChange={updateExpansion} />}
           {expansion.type === "direct" && <DirectEditor expansion={expansion} onChange={updateExpansion} />}
           {expansion.type === "random" && <RandomEditor expansion={expansion} onChange={updateExpansion} />}
           <div className="editor-actions">

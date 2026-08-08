@@ -5,6 +5,7 @@ import {
   cloneConfig,
   displayTemplate,
   importPreview,
+  renameChoiceField,
   renderChoice,
   searchExpansions,
   storedTemplate,
@@ -25,6 +26,21 @@ test("choice templates round-trip through layman bracket notation", () => {
 test("choice renderer fills every configured field", () => {
   const choice = DEFAULT_CONFIG.expansions.find((item) => item.type === "choice");
   assert.equal(renderChoice(choice, { Meal: "Turkey", Side: "Fries" }), "Hey, we have Turkey in the menu today with Fries.");
+});
+
+test("renaming a choice field keeps its sentence reference in sync", () => {
+  const choice = cloneConfig(DEFAULT_CONFIG.expansions.find((item) => item.type === "choice"));
+  const meal = choice.fields.find((field) => field.name === "Meal");
+  const result = renameChoiceField(choice, meal.id, "Foods");
+  assert.equal(result.valid, true);
+  assert.equal(result.fields[0].name, "Foods");
+  assert.match(result.template, /\{\{Foods\}\}/);
+  assert.doesNotMatch(result.template, /\{\{Meal\}\}/);
+  assert.equal(renderChoice({ ...choice, fields: result.fields, template: result.template }, { Foods: "Turkey", Side: "Rice" }), "Hey, we have Turkey in the menu today with Rice.");
+
+  const duplicate = renameChoiceField(choice, meal.id, "Side");
+  assert.equal(duplicate.valid, false);
+  assert.match(duplicate.error, /already exists/i);
 });
 
 test("search prefers an exact shortcut and searches labels", () => {

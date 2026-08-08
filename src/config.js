@@ -75,6 +75,25 @@ export function storedTemplate(template) {
   return String(template ?? "").replace(/\[\s*([^\[\]]+?)\s*\]/g, "{{$1}}");
 }
 
+export function renameChoiceField(expansion, fieldId, value) {
+  const field = expansion?.fields?.find((item) => item.id === fieldId);
+  if (!field) return { valid: false, error: "This choice field no longer exists." };
+
+  const name = String(value ?? "").replace(/[\[\]{}]/g, "").trim().slice(0, 80);
+  if (!name) return { valid: false, error: "Give this choice field a name." };
+  if (expansion.fields.some((item) => item.id !== fieldId && item.name.toLowerCase() === name.toLowerCase())) {
+    return { valid: false, error: `A choice field named "${name}" already exists.` };
+  }
+
+  const escapedName = field.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const template = String(expansion.template ?? "").replace(
+    new RegExp(`\\{\\{\\s*${escapedName}\\s*\\}\\}`, "g"),
+    () => `{{${name}}}`,
+  );
+  const fields = expansion.fields.map((item) => item.id === fieldId ? { ...item, name } : item);
+  return { valid: true, error: "", name, fields, template };
+}
+
 export function templateParts(template) {
   const source = String(template ?? "");
   const parts = [];

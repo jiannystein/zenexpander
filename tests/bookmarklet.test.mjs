@@ -88,6 +88,19 @@ test("configurator groups shortcut hints and mirrors the single choice action", 
   assert.match(styles, /\.button-shortcut kbd/);
 });
 
+test("choice editor supports consistent chips, field renaming, independent disclosure, and bounded option-aware widths", async () => {
+  const app = await readFile(path.join(root, "src", "App.jsx"), "utf8");
+  const styles = await readFile(path.join(root, "src", "styles.css"), "utf8");
+  assert.match(app, /renameChoiceField/);
+  assert.match(app, /new Set\(\[\.\.\.current, field\.id\]\)/);
+  assert.match(app, /open=\{openFields\.has\(field\.id\)\}/);
+  assert.match(app, /Math\.min\(260, Math\.max\(112/);
+  assert.match(styles, /\.choice-field-name/);
+  assert.doesNotMatch(styles, /\.sentence-token:nth-of-type\(even\)/);
+  assert.doesNotMatch(styles, /\.inline-select:nth-of-type\(even\)/);
+  assert.match(styles, /text-overflow: ellipsis/);
+});
+
 test("runtime reconstructs a live editor range and verifies insertion", async () => {
   const runtime = await readFile(path.join(root, "src", "bookmarklet", "runtime.js"), "utf8");
   assert.match(runtime, /function rangeFromOffsets/);

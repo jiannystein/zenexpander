@@ -74,6 +74,7 @@ h1, h2 { min-width: 0; overflow-wrap: anywhere; }
 .install-action svg:last-child { margin-left: 8px; }
 .file-button { position: relative; overflow: hidden; }
 .file-button input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip: rect(0 0 0 0) !important; clip-path: inset(50%) !important; white-space: nowrap !important; }
 
 .tabs { display: flex; min-height: 51px; overflow-x: auto; border-bottom: 1px solid var(--rule); background: var(--paper-2); scrollbar-width: thin; }
 .tab, .new-tab { display: flex; min-width: 130px; align-items: center; justify-content: space-between; gap: var(--space-xs); padding: 0 var(--space-md); border: 0; border-right: 1px solid var(--rule); background: transparent; }
@@ -98,7 +99,6 @@ h1, h2 { min-width: 0; overflow-wrap: anywhere; }
 .composer { position: relative; display: flex; min-height: 114px; align-items: center; padding: var(--space-lg) var(--space-xl); border: 1px solid var(--rule); border-radius: var(--radius-sm) var(--radius-sm) 0 0; background: var(--surface); }
 .sentence-preview { display: inline; font: 500 25px/1.75 var(--font-display); }
 .sentence-token { display: inline-flex; min-height: 47px; align-items: center; gap: var(--space-2xs); margin: 0 var(--space-2xs); padding: 0 var(--space-xs); border: 1px solid var(--accent); border-radius: var(--radius-sm); background: var(--surface); color: var(--accent); font: 600 19px/1 var(--font-display); vertical-align: middle; }
-.sentence-token:nth-of-type(even) { border-color: var(--ink-soft); color: var(--ink); }
 .sentence-token svg { width: 16px; }
 .edit-sentence { position: absolute; right: 14px; bottom: 8px; border: 0; background: transparent; color: var(--accent); font-size: 12px; font-weight: 650; }
 .sentence-edit { padding: var(--space-xs); border-inline: 1px solid var(--rule); background: var(--paper-2); }
@@ -106,13 +106,18 @@ h1, h2 { min-width: 0; overflow-wrap: anywhere; }
 
 .choice-field-list { border: 1px solid var(--rule); border-top: 0; border-radius: 0 0 var(--radius-sm) var(--radius-sm); background: var(--surface); }
 .choice-field + .choice-field { border-top: 1px solid var(--rule); }
-.choice-field-head { display: flex; min-height: 58px; align-items: center; justify-content: space-between; padding: 0 var(--space-md); }
-.choice-disclosure { display: flex; min-height: 44px; align-items: center; gap: var(--space-2xs); border: 0; background: transparent; color: var(--ink); }
+.choice-field-head { display: grid; min-height: 58px; grid-template-columns: 34px minmax(120px, 240px) 1fr 40px; align-items: center; gap: var(--space-3xs); padding: var(--space-2xs) var(--space-md); }
+.choice-disclosure { display: grid; width: 34px; min-height: 42px; place-items: center; padding: 0; border: 0; background: transparent; color: var(--ink); }
 .choice-disclosure > svg { width: 16px; transition: transform var(--duration-fast) var(--ease-out); }
 .choice-field.is-open .choice-disclosure > svg { transform: rotate(0deg); }
 .choice-field:not(.is-open) .choice-disclosure > svg { transform: rotate(-90deg); }
-.choice-disclosure strong { color: var(--accent); }
-.choice-disclosure span { color: var(--muted); }
+.choice-name-wrap { position: relative; display: grid; min-width: 0; }
+.choice-field-name { width: 100%; min-width: 0; height: 38px; padding: 0 var(--space-2xs); border: 1px solid transparent; border-radius: var(--radius-sm); background: transparent; color: var(--accent); font: 700 15px/1 var(--font-sans); }
+.choice-field-name:hover { background: var(--teal-wash); }
+.choice-field-name:focus { border-color: var(--accent); outline: 3px solid var(--accent-soft); background: var(--surface); }
+.choice-field-name[aria-invalid="true"] { border-color: var(--danger); }
+.choice-name-error { position: absolute; z-index: 2; top: calc(100% + 2px); left: 0; width: max-content; max-width: 280px; padding: var(--space-3xs) var(--space-2xs); border-left: 3px solid var(--danger); background: var(--surface); color: var(--danger); font-size: 12px; box-shadow: var(--shadow-float); }
+.choice-count { min-width: 0; color: var(--muted); white-space: nowrap; }
 .icon-button { display: grid; width: 40px; height: 40px; flex: 0 0 auto; place-items: center; border: 0; background: transparent; color: var(--ink-soft); }
 .choice-options { display: grid; gap: var(--space-2xs); padding: 0 var(--space-md) var(--space-sm); }
 .option-row { display: grid; grid-template-columns: 28px 1fr 40px; align-items: center; gap: var(--space-2xs); }
@@ -148,9 +153,8 @@ h1, h2 { min-width: 0; overflow-wrap: anywhere; }
 .preview-content { position: relative; z-index: 1; margin: calc((2 * var(--space-5xl)) - var(--space-2xs)) var(--space-3xl) 0 var(--space-5xl); }
 .preview-content h2 { margin: 0 0 var(--space-xl); font: 650 23px/1.1 var(--font-display); }
 .preview-sentence { min-height: 116px; font: 500 24px/1.75 var(--font-display); }
-.inline-select { position: relative; display: inline-block; margin: 0 var(--space-2xs); vertical-align: middle; }
-.inline-select select { width: var(--choice-width, auto); min-height: 50px; appearance: none; padding: 0 var(--space-2xl) 0 var(--space-xs); border: 1px solid var(--accent); border-radius: var(--radius-sm); background: var(--surface); color: var(--accent); font: 600 19px/1 var(--font-display); }
-.inline-select:nth-of-type(even) select { border-color: var(--ink-soft); color: var(--ink); }
+.inline-select { position: relative; display: inline-block; width: min(var(--choice-width, 112px), 100%); max-width: 100%; margin: 0 var(--space-2xs); vertical-align: middle; }
+.inline-select select { width: 100%; min-height: 50px; appearance: none; overflow: hidden; padding: 0 var(--space-2xl) 0 var(--space-xs); border: 1px solid var(--accent); border-radius: var(--radius-sm); background: var(--surface); color: var(--accent); font: 600 19px/1 var(--font-display); text-overflow: ellipsis; white-space: nowrap; }
 .inline-select svg { position: absolute; top: 17px; right: 12px; width: 17px; pointer-events: none; }
 .preview-button { width: 100%; margin: var(--space-md) 0 var(--space-xl); }
 .plain-note { display: flex; gap: var(--space-md); padding-top: var(--space-lg); border-top: 1px solid var(--rule); color: var(--muted); }
