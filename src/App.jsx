@@ -42,9 +42,9 @@ import { createPairingToken, loadWorkspace, saveWorkspace } from "./storage.js";
 
 const LEAF_LOGO_URL = `${import.meta.env.BASE_URL}zenexpander-leaf.png`;
 const NAV_ITEMS = [
-  { id: "expansions", label: "Expansions", note: "Step 1 · Build shortcuts" },
-  { id: "setup", label: "Setup", note: "Step 2 · Install & test" },
-  { id: "preferences", label: "Preferences", note: "Step 3 · Set triggers" },
+  { id: "expansions", label: "Expansions", note: "Step 1 · Build" },
+  { id: "setup", label: "Setup", note: "Step 2 · Add" },
+  { id: "preferences", label: "Preferences", note: "Step 3 · Tune" },
 ];
 
 function LeafLogo({ inverted = false }) {
@@ -71,9 +71,8 @@ function Onboarding({ onCreate, onImport, error }) {
     <main className="onboarding-shell">
       <section className="onboarding" aria-labelledby="welcome-title">
         <Brand />
-        <p className="eyebrow">Private by default</p>
         <h1 id="welcome-title">Create your local expansion workspace.</h1>
-        <p className="lede">ZenExpander keeps your shortcuts in this browser. No account, upload, telemetry, or installation.</p>
+        <p className="lede">Private by default: ZenExpander keeps your shortcuts in this browser. No account, upload, telemetry, or installation.</p>
         {error && <p className="notice notice-error" role="alert">{error}</p>}
         <div className="onboarding-actions">
           <button className="button button-primary" onClick={onCreate}>Create local config</button>
@@ -112,7 +111,6 @@ function Header({ page, onPage, onImport, onExport, savedLabel, bridge }) {
           <b>Never uploaded</b>
         </div>
         <div className="header-actions">
-          <p className="header-backup-hint"><strong>Keep a recovery copy.</strong><span>Export before switching browsers or clearing site data.</span></p>
           <label className="text-action file-button" aria-label="Import config">
             <DownloadSimple /> Import
             <input type="file" accept="application/json,.json" onChange={onImport} />
@@ -141,23 +139,25 @@ function BookmarkletLink({ href, onToast }) {
   );
 }
 
-function ExpansionTabs({ config, activeId, onSelect, onClose, onNew }) {
+function ExpansionTabs({ config, activeId, pendingId, onSelect, onClose, onNew }) {
   return (
     <div className="tabs" role="tablist" aria-label="Saved expansions">
-      {config.expansions.map((item) => (
-        <button
-          key={item.id}
-          role="tab"
-          aria-selected={activeId === item.id}
-          className={activeId === item.id ? "tab is-active" : "tab"}
-          onClick={() => onSelect(item.id)}
-        >
-          <span>{config.prefix}{item.shortcut}</span>
-          <X
+      {config.expansions.filter((item) => item.id !== pendingId).map((item) => (
+        <span className={activeId === item.id ? "tab-shell is-active" : "tab-shell"} role="presentation" key={item.id}>
+          <button
+            role="tab"
+            aria-selected={activeId === item.id}
+            className="tab"
+            onClick={() => onSelect(item.id)}
+          >
+            <span>{config.prefix}{item.shortcut}</span>
+          </button>
+          <button
+            className="tab-delete"
             aria-label={`Delete ${config.prefix}${item.shortcut}`}
-            onClick={(event) => { event.stopPropagation(); onClose(item.id); }}
-          />
-        </button>
+            onClick={() => onClose(item.id)}
+          ><X aria-hidden="true" /></button>
+        </span>
       ))}
       <button className="new-tab" onClick={onNew}><Plus /> New</button>
     </div>
@@ -508,11 +508,10 @@ function LivePreview({ config, expansion, onToast }) {
             : finalText || <span className="preview-empty">Your expansion will appear here.</span>}
         </div>
         <button
-          className={`button button-primary preview-button${expansion.type === "choice" ? " button-shortcut" : ""}`}
-          aria-keyshortcuts={expansion.type === "choice" ? "Enter" : undefined}
+          className="button button-primary preview-button"
           onClick={copy}
         >
-          {expansion.type === "choice" ? <><span>Confirm & paste</span><kbd aria-hidden="true">Enter</kbd></> : "Copy test"}
+          Copy test
         </button>
         <div className="plain-note"><FileText /><p><b>Plain text only</b><span>Nothing is sent until you paste.</span></p></div>
       </div>
@@ -524,11 +523,27 @@ function LivePreview({ config, expansion, onToast }) {
 
 function ExpansionsPage({ config, setConfig, savedConfig, onSave, onDiscard, saveState, toast, setToast }) {
   const [activeId, setActiveId] = useState(config.expansions[1]?.id ?? config.expansions[0]?.id);
-  const expansion = config.expansions.find((item) => item.id === activeId) ?? config.expansions[0];
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const pendingDeleteRef = useRef(null);
+  const deleteTimer = useRef();
+  const visibleExpansions = useMemo(
+    () => config.expansions.filter((item) => item.id !== pendingDelete?.id),
+    [config.expansions, pendingDelete?.id],
+  );
+  const expansion = visibleExpansions.find((item) => item.id === activeId) ?? visibleExpansions[0];
 
   useEffect(() => {
-    if (!config.expansions.some((item) => item.id === activeId)) setActiveId(config.expansions[0]?.id);
-  }, [activeId, config.expansions]);
+    if (!visibleExpansions.some((item) => item.id === activeId)) setActiveId(visibleExpansions[0]?.id);
+  }, [activeId, visibleExpansions]);
+
+  useEffect(() => () => {
+    window.clearTimeout(deleteTimer.current);
+    const item = pendingDeleteRef.current;
+    if (item) setConfig((current) => ({
+      ...current,
+      expansions: current.expansions.filter((expansionItem) => expansionItem.id !== item.id),
+    }));
+  }, [setConfig]);
 
   const updateExpansion = (patch) => setConfig((current) => ({
     ...current,
@@ -544,13 +559,37 @@ function ExpansionsPage({ config, setConfig, savedConfig, onSave, onDiscard, sav
       setToast("Keep at least one expansion in your workspace.");
       return;
     }
-    setConfig((current) => ({ ...current, expansions: current.expansions.filter((item) => item.id !== id) }));
+    if (pendingDeleteRef.current) {
+      setToast("Undo the current deletion or wait a moment before deleting another.");
+      return;
+    }
+    const item = config.expansions.find((candidate) => candidate.id === id);
+    if (!item) return;
+    const remaining = config.expansions.filter((candidate) => candidate.id !== id);
+    pendingDeleteRef.current = item;
+    setPendingDelete(item);
+    setActiveId(remaining[0]?.id);
+    deleteTimer.current = window.setTimeout(() => {
+      setConfig((current) => ({
+        ...current,
+        expansions: current.expansions.filter((candidate) => candidate.id !== id),
+      }));
+      pendingDeleteRef.current = null;
+      setPendingDelete(null);
+    }, 7_000);
+  };
+  const undoDelete = () => {
+    window.clearTimeout(deleteTimer.current);
+    const item = pendingDeleteRef.current;
+    pendingDeleteRef.current = null;
+    setPendingDelete(null);
+    if (item) setActiveId(item.id);
   };
 
   if (!expansion) return null;
   return (
     <>
-      <ExpansionTabs config={config} activeId={expansion.id} onSelect={setActiveId} onClose={deleteExpansion} onNew={addExpansion} />
+      <ExpansionTabs config={config} activeId={expansion.id} pendingId={pendingDelete?.id} onSelect={setActiveId} onClose={deleteExpansion} onNew={addExpansion} />
       <div className="workbench">
         <main className="editor-pane">
           <h1>What should {config.prefix}{expansion.shortcut || "shortcut"} say?</h1>
@@ -563,6 +602,12 @@ function ExpansionsPage({ config, setConfig, savedConfig, onSave, onDiscard, sav
             <span className="autosave"><Check /> {saveState}</span>
             <button className="button button-secondary" onClick={() => onDiscard(savedConfig)}>Discard changes</button>
           </div>
+          {pendingDelete && (
+            <div className="undo-toast" role="status">
+              <span>Deleted {config.prefix}{pendingDelete.shortcut}.</span>
+              <button onClick={undoDelete}>Undo</button>
+            </div>
+          )}
           {toast && <p className="toast" role="status">{toast}</p>}
         </main>
         <LivePreview config={config} expansion={expansion} onToast={setToast} />
@@ -632,15 +677,19 @@ function Scratchpad({ config, onToast }) {
         className="scratchpad"
         contentEditable
         suppressContentEditableWarning
-        role="textbox"
+        role="combobox"
         aria-label="ZenExpander test scratchpad"
+        aria-autocomplete="list"
+        aria-controls="zen-scratch-results"
+        aria-expanded={Boolean(trigger && !choice)}
+        aria-haspopup="listbox"
         data-placeholder="Type ;hello here…"
         onInput={(event) => inspect(normalizeNewlines(event.currentTarget.innerText ?? event.currentTarget.textContent ?? ""))}
       />
       {trigger && !choice && (
-        <div className="scratch-results" role="listbox" aria-label="Matching scratchpad expansions">
+        <div id="zen-scratch-results" className="scratch-results" role="listbox" aria-label="Matching scratchpad expansions">
           {trigger.results.length ? trigger.results.map((expansion) => (
-            <button key={expansion.id} role="option" onClick={() => choose(expansion)}>
+            <button key={expansion.id} role="option" aria-selected="false" onClick={() => choose(expansion)}>
               <TypeIcon type={expansion.type} />
               <span><b>{config.prefix}{expansion.shortcut}</b>{expansion.label}</span>
               <em>{expansion.type === "choice" ? "Choices" : expansion.type}</em>
@@ -697,9 +746,8 @@ function Scratchpad({ config, onToast }) {
 function SetupPage({ config, bookmarkletHref, bridge, onToast }) {
   return (
     <main className="secondary-page setup-page">
-      <p className="eyebrow">Chrome + Edge desktop · zero installation</p>
-      <h1>Install the bookmarklet in under a minute.</h1>
-      <p className="lede">Keep this configurator tab open, then drag the button to your browser’s bookmarks bar. Run it once on each page or reload where you want expansions.</p>
+      <h1>Add ZenExpander to your bookmarks bar.</h1>
+      <p className="lede">Chrome and Edge desktop need no extension or executable. Keep this configurator open, then drag the button below to your bookmarks bar.</p>
       <div className="setup-grid">
         <section className="setup-step">
           <span>01</span><h2>Show the bookmarks bar</h2><p>Press Ctrl+Shift+B in Chrome or Edge.</p>
@@ -714,11 +762,24 @@ function SetupPage({ config, bookmarkletHref, bridge, onToast }) {
         <section className="setup-step">
           <span>03</span><h2>Open it on a page</h2><p>Click ZenExpander in the bookmarks bar. A helper tab connects and closes.</p>
         </section>
+        <section className="setup-step">
+          <span>04</span><h2>Optional: use related tabs</h2><p>From the widget, choose <strong>Use in new tabs</strong> and review the exact site before allowing it for this browser session.</p>
+        </section>
       </div>
+      <section className="new-tabs-guide" aria-labelledby="new-tabs-title">
+        <div>
+          <h2 id="new-tabs-title">Useful for trusted, same-site pop-outs.</h2>
+          <p>Good fits include CRM ticket windows, same-origin administration tabs, webmail compose windows, and knowledge-base articles opened by the current page.</p>
+        </div>
+        <div>
+          <h3>Best effort, with a dependable fallback</h3>
+          <p>Only the same scheme, hostname, and port are included. Subdomains, different ports, cross-origin pages, isolated windows, and tabs the site does not expose safely still need the ZenExpander bookmark.</p>
+        </div>
+      </section>
+      <p className="recovery-note"><strong>Keep a recovery copy.</strong> Export before switching browsers or clearing this site’s data. New-tab consent is never included in exports.</p>
       <section className="safe-test">
         <div>
-          <p className="eyebrow">Safe scratchpad</p>
-          <h2>Test without sending anything.</h2>
+          <h2>Test safely without sending anything.</h2>
           <p>Click below, type <code>;hello</code>, then choose the result. Enter is only captured while ZenExpander owns its menu.</p>
         </div>
         <Scratchpad config={config} onToast={onToast} />
@@ -736,7 +797,6 @@ function PreferencesPage({ config, setConfig }) {
   const updateSettings = (patch) => setConfig((current) => ({ ...current, settings: { ...current.settings, ...patch } }));
   return (
     <main className="secondary-page preferences-page">
-      <p className="eyebrow">Defaults that stay out of the way</p>
       <h1>Preferences</h1>
       <section className="preference-row">
         <div><h2>Special symbol</h2><p>Typing this symbol opens matching expansions beside the active text box.</p></div>
@@ -754,8 +814,12 @@ function PreferencesPage({ config, setConfig }) {
         <div><h2>CapsLock search <span>Experimental</span></h2><p>CapsLock can conflict with typing and page shortcuts. The safe default remains Ctrl+Shift+Space.</p></div>
         <input type="checkbox" checked={config.settings.experimentalCapsLock} onChange={(event) => updateSettings({ experimentalCapsLock: event.target.checked })} />
       </label>
+      <section className="preference-row">
+        <div><h2>New tabs stay site-controlled</h2><p>Turn this on from the widget only after reviewing the exact origin. Consent lasts for the browser session and is never saved, synced, or exported.</p></div>
+        <span className="session-label">Session only</span>
+      </section>
       <section className="privacy-card">
-        <LockKey /><div><h2>Privacy boundary</h2><p>ZenExpander stores configuration locally, never reads the clipboard, never runs code from configuration, and always disables itself in password, payment, and one-time-code fields.</p></div>
+        <LockKey /><div><h2>Privacy boundary</h2><p>ZenExpander stores configuration locally, never reads the clipboard, never runs code from configuration, and disables itself in password, payment, and one-time-code fields. Do not save passwords, authentication keys, or sensitive records, and enable new tabs only on origins you trust.</p></div>
       </section>
     </main>
   );
@@ -767,7 +831,6 @@ function ImportDialog({ data, onCancel, onConfirm }) {
     <div className="dialog-backdrop" role="presentation">
       <section className="dialog" role="dialog" aria-modal="true" aria-labelledby="import-title">
         <button className="dialog-close" onClick={onCancel} aria-label="Close import preview"><X /></button>
-        <p className="eyebrow">Import preview</p>
         <h2 id="import-title">Review before replacing this browser’s config.</h2>
         {data.preview.valid ? (
           <>

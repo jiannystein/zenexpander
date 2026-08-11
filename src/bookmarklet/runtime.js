@@ -47,8 +47,8 @@ function sensitiveReason(target) {
   return "";
 }
 
-function activeEditable() {
-  let target = document.activeElement;
+function activeEditable(doc = document) {
+  let target = doc.activeElement;
   while (target) {
     const shadowTarget = target.shadowRoot?.activeElement;
     if (shadowTarget) {
@@ -71,14 +71,14 @@ function activeEditable() {
   return isEditable(target) ? target : null;
 }
 
-function viewportRect(target) {
+function viewportRect(target, rootWindow = window) {
   const rect = target.getBoundingClientRect();
   let left = rect.left;
   let right = rect.right;
   let top = rect.top;
   let bottom = rect.bottom;
   let view = documentFor(target).defaultView;
-  while (view && view !== window) {
+  while (view && view !== rootWindow) {
     const frame = view.frameElement;
     if (!frame) break;
     const frameRect = frame.getBoundingClientRect();
@@ -222,31 +222,31 @@ function dispatchEditorInput(target, text) {
   }));
 }
 
-function waitForEditor() {
-  return new Promise((resolve) => setTimeout(resolve, 260));
+function waitForEditor(win = window) {
+  return new Promise((resolve) => win.setTimeout(resolve, 260));
 }
 
 function styleText() {
   return `
-    :host{all:initial;color-scheme:light;font-family:Arial,sans-serif}
+    :host{all:initial;--zf:ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:light;font-family:var(--zf)}
     *{box-sizing:border-box}
-    .stage{position:fixed;inset:0;z-index:2147483647;pointer-events:none;color:#281431;font:14px/1.45 Arial,sans-serif}
+    .stage{position:fixed;inset:0;z-index:2147483647;pointer-events:none;color:#281431;font:14px/1.45 var(--zf)}
     button,input,select{font:inherit}
     button{cursor:pointer}
-    button:hover{filter:brightness(.96)}button:active{transform:translateY(1px)}button:disabled{cursor:not-allowed;opacity:.55}
+    button:active{transform:translateY(1px)}button:disabled{cursor:not-allowed;opacity:.55}
     .launcher{position:absolute;right:20px;bottom:20px;display:grid;width:56px;height:56px;place-items:center;border:1px solid #0a8276;border-radius:50%;background:#0a8276;box-shadow:0 10px 30px #28143138;pointer-events:auto}
     .launcher img{display:block;width:31px;height:31px;object-fit:contain;filter:brightness(0) invert(1)}
     .launcher:focus-visible,.panel button:focus-visible,.panel input:focus-visible,.panel select:focus-visible{outline:3px solid #44d7ca;outline-offset:3px}
     .launcher::after{content:"";position:absolute;inset:-8px;border:1px solid #a8e2dc;border-radius:50%}
-    .panel{position:absolute;right:20px;bottom:88px;display:flex;flex-direction:column;width:min(390px,calc(100vw - 24px));max-height:min(580px,calc(100vh - 120px));overflow:hidden;border:1px solid #d8cfdf;border-radius:12px;background:#fff;color:#281431;box-shadow:0 18px 48px #28143130;pointer-events:auto}
+    .panel{position:absolute;right:20px;bottom:88px;display:flex;flex-direction:column;width:min(390px,calc(100% - 24px));max-width:calc(100% - 24px);max-height:min(580px,calc(100dvh - 120px));overflow:hidden;border:1px solid #d8cfdf;border-radius:12px;background:#fff;color:#281431;box-shadow:0 18px 48px #28143130;pointer-events:auto}
     .panel[hidden]{display:none}
     .head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #e5dfea;background:#f8f3fb}
     .head strong{font:700 18px/1.2 Georgia,serif}
-    .head small{display:inline-flex;align-items:center;gap:4px;margin-left:auto;color:#726779;white-space:nowrap}.head kbd{padding:4px 8px;border:1px solid #bfb3c7;border-bottom-width:2px;border-radius:5px;background:#fff;color:#281431;font:700 12px/1.35 Arial,sans-serif}
+    .head small{display:inline-flex;align-items:center;gap:4px;margin-left:auto;color:#726779;white-space:nowrap}.head kbd{padding:4px 8px;border:1px solid #bfb3c7;border-bottom-width:2px;border-radius:5px;background:#fff;color:#281431;font:700 12px/1.35 var(--zf)}
     .icon{width:40px;height:40px;border:0;background:transparent;color:#281431;font-size:20px}
-    .body{min-height:0;overflow:auto;padding:14px}
+    .body{min-height:0;overflow:auto;overscroll-behavior:contain;padding:14px}
     .status{margin:0 0 10px;color:#726779}
-    .status[data-tone="error"]{padding:10px;border-left:3px solid #a2304b;background:#fff0f4;color:#7c2239}
+    .status[data-tone="error"]{padding:10px;border:1px solid #d9a5b2;background:#fff0f4;color:#7c2239}
     .search{width:100%;height:44px;padding:0 12px;border:1px solid #7f7287;border-radius:6px;background:#fff;color:#281431}
     .results{display:grid;gap:2px;margin:10px -4px 0;max-height:300px;overflow:auto}
     .result{display:grid;grid-template-columns:1fr auto;gap:4px 12px;width:100%;padding:10px 12px;border:0;border-radius:6px;background:transparent;color:#281431;text-align:left}
@@ -255,17 +255,19 @@ function styleText() {
     .empty{padding:18px 8px;color:#726779;text-align:center}
     .choice-title{margin:0 0 6px;font:700 22px/1.2 Georgia,serif}.sentence{margin:0 0 16px;color:#594c61;white-space:pre-wrap;overflow-wrap:anywhere}
     .fields{display:grid;gap:12px}.field{display:grid;gap:5px}.field label{font-weight:700}.field select{height:44px;padding:0 10px;border:1px solid #7f7287;border-radius:6px;background:#fff;color:#281431}
-    .preview{margin:16px 0;padding:12px;border-left:3px solid #0a8276;background:#f2fbfa;font:600 16px/1.5 Georgia,serif;white-space:pre-wrap;overflow-wrap:anywhere}
-    .actions{margin-top:14px}.primary{display:inline-flex;width:100%;min-height:44px;align-items:center;justify-content:center;gap:8px;padding:0 14px;border:1px solid #0a8276;border-radius:6px;background:#0a8276;color:#fff;font-weight:700}.primary kbd{min-width:42px;padding:3px 7px;border:1px solid #ffffff94;border-bottom-width:2px;border-radius:5px;background:#ffffff1f;color:inherit;font:700 11px/1.35 Arial,sans-serif;text-align:center}
+    .preview{margin:16px 0;padding:12px;border:1px solid #a8e2dc;background:#f2fbfa;font:600 16px/1.5 Georgia,serif;white-space:pre-wrap;overflow-wrap:anywhere}
+    .actions{margin-top:14px}.primary{display:inline-flex;width:100%;min-height:44px;align-items:center;justify-content:center;gap:8px;padding:0 14px;border:1px solid #0a8276;border-radius:6px;background:#0a8276;color:#fff;font-weight:700}.primary kbd{min-width:42px;padding:3px 7px;border:1px solid #ffffff94;border-bottom-width:2px;border-radius:5px;background:#ffffff1f;color:inherit;font:700 11px/1.35 var(--zf);text-align:center}
     .restart{min-height:44px;padding:0 14px;border:1px solid #0a8276;border-radius:6px;background:#0a8276;color:#fff;font-weight:700}
-    @media(max-width:480px){.launcher{right:14px;bottom:14px}.panel{right:12px;bottom:82px}}
+    .origin-control{margin-top:12px;padding-top:10px;border-top:1px solid #e5dfea}.origin-row{display:flex;align-items:center;justify-content:space-between;gap:8px}.origin-state{min-width:0;margin:0;color:#594c61;font-weight:650;overflow-wrap:anywhere}.origin-toggle{min-height:44px;padding:0 4px;border:0;background:transparent;color:#087168;font-weight:700;white-space:nowrap}.origin-title{margin:0 0 8px;font:700 20px/1.2 Georgia,serif}.origin-code{display:block;padding:8px;border:1px solid #d8cfdf;background:#f8f3fb;font:600 12px/1.4 monospace;overflow-wrap:anywhere}.origin-detail{margin:10px 0;color:#594c61;font-size:12px}.origin-actions{display:flex;gap:8px}.origin-actions .secondary{min-height:44px;padding:0 12px;border:1px solid #7f7287;border-radius:6px;background:#fff;font-weight:700}
+    @media(hover:hover) and (pointer:fine){button:hover{filter:brightness(.96)}}
+    @media(max-width:480px){.launcher{right:14px;bottom:14px}.panel{right:12px;bottom:82px;width:calc(100% - 24px);max-width:calc(100% - 24px)}}
     @media(prefers-reduced-motion:no-preference){.panel{animation:zen-in .16s ease-out}@keyframes zen-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}}
     @media(prefers-reduced-motion:reduce){button:active{transform:none}}
   `;
 }
 
-function makeElement(tag, className = "", role = "", text = "") {
-  const node = document.createElement(tag);
+function makeElement(doc, tag, className = "", role = "", text = "") {
+  const node = doc.createElement(tag);
   if (className) node.className = className;
   if (role) node.dataset.role = role;
   if (text) node.textContent = text;
@@ -273,12 +275,22 @@ function makeElement(tag, className = "", role = "", text = "") {
 }
 
 class ZenRuntime {
-  constructor() {
+  constructor(win = window, bridgePort = null, options = {}) {
+    this.win = win;
+    this.doc = win.document;
     this.host = null;
     this.shadow = null;
     this.config = null;
     this.bridgeWindow = null;
-    this.bridgePort = null;
+    this.bridgePort = bridgePort;
+    this.isChild = Boolean(options.isChild);
+    this.configRequested = false;
+    this.originArmed = false;
+    this.originConsented = false;
+    this.consentOpen = false;
+    this.nativeOpen = null;
+    this.openWrapper = null;
+    this.trackedWindows = new Map();
     this.nonce = "";
     this.poll = null;
     this.activeTarget = null;
@@ -301,47 +313,58 @@ class ZenRuntime {
     this.handleFocus = this.handleFocus.bind(this);
   }
 
+  create(tag, className = "", role = "", text = "") {
+    return makeElement(this.doc, tag, className, role, text);
+  }
+
   node(role) {
     return this.shadow.querySelector(`[data-role="${role}"]`);
   }
 
   build() {
-    this.host = document.createElement("div");
+    this.host = this.doc.createElement("div");
     this.host.id = ROOT_ID;
     this.shadow = this.host.attachShadow({ mode: "open" });
-    const style = document.createElement("style");
+    const style = this.doc.createElement("style");
     style.textContent = styleText();
-    const stage = makeElement("div", "stage");
-    const launcher = makeElement("button", "launcher", "launcher");
+    const stage = this.create("div", "stage");
+    const launcher = this.create("button", "launcher", "launcher");
     launcher.setAttribute("aria-label", "Open ZenExpander");
-    const launcherLogo = makeElement("img");
+    const launcherLogo = this.create("img");
     launcherLogo.src = LEAF_ICON;
     launcherLogo.alt = "";
     launcher.append(launcherLogo);
-    const panel = makeElement("section", "panel", "panel");
+    const panel = this.create("section", "panel", "panel");
     panel.setAttribute("aria-label", "ZenExpander");
     panel.setAttribute("aria-keyshortcuts", "Escape");
     panel.hidden = true;
-    const head = makeElement("div", "head");
-    const title = makeElement("strong", "", "", "ZenExpander");
-    const hint = makeElement("small", "", "hint");
-    const hintKey = makeElement("kbd", "", "", "Esc");
-    hint.append(hintKey, document.createTextNode(" to close"));
-    const minimize = makeElement("button", "icon", "minimize", "−");
+    const head = this.create("div", "head");
+    const title = this.create("strong", "", "", "ZenExpander");
+    const hint = this.create("small", "", "hint");
+    const hintKey = this.create("kbd", "", "", "Esc");
+    hint.append(hintKey, this.doc.createTextNode(" to close"));
+    const minimize = this.create("button", "icon", "minimize", "−");
     minimize.setAttribute("aria-label", "Minimize");
     head.append(title, hint, minimize);
-    const body = makeElement("div", "body", "body");
-    const status = makeElement("p", "status", "status", "Connecting to your private configurator…");
-    const search = makeElement("input", "search", "search");
+    const body = this.create("div", "body", "body");
+    const status = this.create("p", "status", "status", this.isChild ? "Open ZenExpander to load your private expansions." : "Connecting to your private configurator…");
+    status.setAttribute("aria-live", "polite");
+    const search = this.create("input", "search", "search");
     search.setAttribute("aria-label", "Search expansions");
     search.setAttribute("placeholder", "Search expansions");
     search.setAttribute("autocomplete", "off");
-    const results = makeElement("div", "results", "results");
+    search.setAttribute("role", "combobox");
+    search.setAttribute("aria-autocomplete", "list");
+    search.setAttribute("aria-controls", "zenexpander-results");
+    search.setAttribute("aria-expanded", "false");
+    const results = this.create("div", "results", "results");
+    results.id = "zenexpander-results";
+    results.setAttribute("role", "listbox");
     body.append(status, search, results);
     panel.append(head, body);
     stage.append(launcher, panel);
     this.shadow.append(style, stage);
-    document.documentElement.append(this.host);
+    this.doc.documentElement.append(this.host);
     this.node("launcher").addEventListener("click", () => this.toggle());
     this.node("minimize").addEventListener("click", () => this.close());
     this.node("search").addEventListener("input", (event) => {
@@ -349,8 +372,8 @@ class ZenRuntime {
       this.renderResults(event.target.value);
     });
     this.node("search").addEventListener("keydown", this.handleKeydown);
-    window.addEventListener("message", this.handleWindowMessage);
-    this.watchDocument(document);
+    this.win.addEventListener("message", this.handleWindowMessage);
+    this.watchDocument(this.doc);
   }
 
   watchFrameContent(frame) {
@@ -395,11 +418,104 @@ class ZenRuntime {
   setStatus(message, tone = "") {
     let status = this.node("status");
     if (!status) {
-      status = makeElement("p", "status", "status");
+      status = this.create("p", "status", "status");
+      status.setAttribute("aria-live", "polite");
       this.node("body").prepend(status);
     }
     status.textContent = message;
     status.dataset.tone = tone;
+  }
+
+  renderOriginControl() {
+    this.node("origin-control")?.remove();
+    if (!this.bridgePort || !this.node("body")) return;
+    const section = this.create("section", "origin-control", "origin-control");
+    if (this.consentOpen) {
+      const title = this.create("h2", "origin-title", "", "Use ZenExpander in new tabs on this site?");
+      const origin = this.create("code", "origin-code", "", this.win.location.origin);
+      const detail = this.create(
+        "p",
+        "origin-detail",
+        "",
+        "Compatible tabs opened by this exact origin can join for this browser session. The catalog loads only when used. Other origins and browser restarts stay out. Use only on sites you trust.",
+      );
+      const actions = this.create("div", "origin-actions");
+      const confirm = this.create("button", "primary", "origin-confirm", "Use on new tabs");
+      const cancel = this.create("button", "secondary", "origin-cancel", "Not now");
+      confirm.addEventListener("click", () => this.armOrigin());
+      cancel.addEventListener("click", () => this.cancelOriginConsent());
+      actions.append(confirm, cancel);
+      section.append(title, origin, detail, actions);
+    } else {
+      const row = this.create("div", "origin-row");
+      const state = this.create(
+        "p",
+        "origin-state",
+        "origin-state",
+        this.originArmed
+          ? `New tabs on · ${this.win.location.host}`
+          : "Ready · New tabs off",
+      );
+      state.setAttribute("aria-live", "polite");
+      const action = this.create(
+        "button",
+        "origin-toggle",
+        "origin-toggle",
+        this.originArmed ? "Stop for new tabs" : "Use in new tabs",
+      );
+      action.addEventListener("click", () => {
+        if (this.originArmed) this.disarmOrigin();
+        else if (this.originConsented) this.armOrigin();
+        else {
+          this.consentOpen = true;
+          this.renderOriginControl();
+          this.node("origin-confirm")?.focus();
+        }
+      });
+      row.append(state, action);
+      section.append(row);
+    }
+    this.node("body").append(section);
+  }
+
+  cancelOriginConsent() {
+    this.consentOpen = false;
+    this.renderOriginControl();
+    this.node("origin-toggle")?.focus();
+  }
+
+  armOrigin() {
+    this.consentOpen = false;
+    this.bridgePort?.postMessage({
+      type: "zen:arm-origin",
+      token: PAIRING_TOKEN,
+      origin: this.win.location.origin,
+    });
+    this.setStatus("Turning on new-tab access for this browser session…");
+  }
+
+  disarmOrigin() {
+    this.bridgePort?.postMessage({
+      type: "zen:disarm-origin",
+      token: PAIRING_TOKEN,
+      origin: this.win.location.origin,
+    });
+    this.notice = "Stopped for new tabs. Existing ZenExpander launchers keep working.";
+    this.setStatus(this.notice);
+  }
+
+  attachPort(port, loadConfig = true) {
+    this.bridgePort = port;
+    this.bridgePort.onmessage = (messageEvent) => this.handleBridge(messageEvent.data);
+    this.bridgePort.start();
+    this.bridgePort.postMessage({
+      type: "zen:request-origin-state",
+      token: PAIRING_TOKEN,
+      origin: this.win.location.origin,
+    });
+    if (loadConfig) this.requestConfig();
+    this.win.clearInterval(this.poll);
+    if (loadConfig) this.poll = this.win.setInterval(() => this.requestConfig(), 2_500);
   }
 
   handleWindowMessage(event) {
@@ -410,22 +526,31 @@ class ZenRuntime {
       || event.data?.nonce !== this.nonce
       || event.ports.length !== 1
     ) return;
-    this.bridgePort = event.ports[0];
-    this.bridgePort.onmessage = (messageEvent) => this.handleBridge(messageEvent.data);
-    this.bridgePort.start();
-    this.requestConfig();
-    clearInterval(this.poll);
-    this.poll = setInterval(() => this.requestConfig(), 2_500);
+    this.attachPort(event.ports[0], true);
   }
 
   handleBridge(message) {
     if (message?.nonce && message.nonce !== this.nonce) return;
     if (["zen:config", "zen:config-changed"].includes(message?.type) && message.config) {
       this.config = message.config;
+      this.win.clearInterval(this.poll);
+      this.poll = null;
       if (this.choice) return;
       if (!this.node("search")) this.restoreSearchBody();
       this.setStatus(this.notice || `${this.config.expansions.length} private expansions ready.`);
       this.renderResults(this.query);
+      return;
+    }
+    if (message?.type === "zen:origin-state" && message.origin === this.win.location.origin) {
+      this.originArmed = Boolean(message.armed);
+      this.originConsented = Boolean(message.consented);
+      this.consentOpen = false;
+      if (this.originArmed) this.installOpenInterceptor();
+      else this.removeOpenInterceptor();
+      this.renderOriginControl();
+      if (this.config && !this.notice) {
+        this.setStatus(`${this.config.expansions.length} private expansions ready.`);
+      }
       return;
     }
     if (message?.type === "zen:error" && message.code === "config-unavailable") {
@@ -436,49 +561,163 @@ class ZenRuntime {
   }
 
   requestConfig() {
+    this.configRequested = true;
     this.bridgePort?.postMessage({ type: "zen:request-config", token: PAIRING_TOKEN, nonce: this.nonce });
+    if (this.isChild && !this.poll) {
+      this.poll = this.win.setInterval(() => {
+        this.bridgePort?.postMessage({ type: "zen:request-config", token: PAIRING_TOKEN, nonce: this.nonce });
+      }, 2_500);
+    }
   }
 
   connect() {
     this.setStatus("Connecting to your private configurator…");
-    this.nonce = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const hash = new URLSearchParams({ token: PAIRING_TOKEN, nonce: this.nonce, origin: location.origin });
-    this.bridgeWindow = window.open(`${BRIDGE_URL}#${hash}`, "_blank");
+    this.nonce = this.win.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const hash = new URLSearchParams({ token: PAIRING_TOKEN, nonce: this.nonce, origin: this.win.location.origin });
+    this.bridgeWindow = this.win.open(`${BRIDGE_URL}#${hash}`, "_blank");
     if (!this.bridgeWindow) this.showDisconnected("Your browser blocked the helper tab. Allow pop-ups, then restart.");
   }
 
+  installOpenInterceptor() {
+    if (this.openWrapper || !this.bridgePort) return;
+    this.nativeOpen = this.win.open;
+    const runtime = this;
+    this.openWrapper = function (...args) {
+      const child = runtime.nativeOpen.apply(this, args);
+      runtime.trackOpenedWindow(child, args[0], args[2]);
+      return child;
+    };
+    try {
+      this.win.open = this.openWrapper;
+    } catch {
+      this.openWrapper = null;
+      this.nativeOpen = null;
+      this.setStatus("This site prevents automatic new-tab setup. Use the ZenExpander bookmark in each tab.", "error");
+    }
+  }
+
+  removeOpenInterceptor() {
+    try {
+      if (this.openWrapper && this.win.open === this.openWrapper) this.win.open = this.nativeOpen;
+    } catch {
+      // A page may freeze window.open after ZenExpander starts; the wrapper remains behaviorally native while disarmed.
+    }
+    this.openWrapper = null;
+    this.nativeOpen = null;
+    for (const tracked of this.trackedWindows.values()) this.win.clearInterval(tracked.timer);
+    this.trackedWindows.clear();
+  }
+
+  propagationFallback() {
+    this.notice = "Couldn’t open ZenExpander in that tab. Click the ZenExpander bookmark in the new tab to connect it.";
+    this.setStatus(this.notice, "error");
+  }
+
+  trackOpenedWindow(child, requestedUrl, features = "") {
+    if (!this.originArmed) return;
+    let requested;
+    try {
+      requested = requestedUrl ? new URL(String(requestedUrl), this.win.location.href) : null;
+    } catch {
+      return;
+    }
+    if (requested && requested.protocol !== "about:" && requested.origin !== this.win.location.origin) return;
+    if (!child || /(?:^|,)(?:noopener|noreferrer)(?:=|,|$)/i.test(String(features))) {
+      this.propagationFallback();
+      return;
+    }
+    const tracked = {
+      timer: null,
+      end: Date.now() + 12_000,
+      doc: null,
+      tried: null,
+      nav: Boolean(requested && requested.protocol !== "about:"),
+    };
+    const check = () => {
+      if (!this.originArmed || child.closed) {
+        this.win.clearInterval(tracked.timer);
+        this.trackedWindows.delete(child);
+        return;
+      }
+      try {
+        if (child.location.origin !== this.win.location.origin) {
+          if (child.location.href !== "about:blank") throw new Error("origin");
+          return;
+        }
+        if (tracked.nav && child.location.href === "about:blank") return;
+        const childDocument = child.document;
+        if (!childDocument?.documentElement || childDocument.readyState === "loading") return;
+        if (tracked.doc === childDocument || tracked.tried === childDocument) return;
+        tracked.tried = childDocument;
+        this.bootstrapChild(child);
+        tracked.doc = childDocument;
+        tracked.end = Infinity;
+      } catch {
+        tracked.tried = null;
+        if (Date.now() < tracked.end) return;
+        this.win.clearInterval(tracked.timer);
+        this.trackedWindows.delete(child);
+        this.propagationFallback();
+      }
+    };
+    tracked.timer = this.win.setInterval(check, 240);
+    this.trackedWindows.set(child, tracked);
+    check();
+  }
+
+  bootstrapChild(child) {
+    if (child.document.getElementById(ROOT_ID)) return;
+    const channel = new this.win.MessageChannel();
+    this.bridgePort.postMessage({
+      type: "zen:create-child-port",
+      token: PAIRING_TOKEN,
+      origin: this.win.location.origin,
+    }, [channel.port1]);
+    installRuntime(child, channel.port2, { isChild: true });
+  }
+
   showDisconnected(message) {
-    clearInterval(this.poll);
+    this.win.clearInterval(this.poll);
+    this.removeOpenInterceptor();
     this.config = null;
     this.open(false);
     const body = this.node("body");
-    const status = makeElement("p", "status", "status", message || "The configurator is closed.");
+    const status = this.create("p", "status", "status", message || "The configurator is closed.");
+    status.setAttribute("aria-live", "assertive");
     status.dataset.tone = "error";
-    const restart = makeElement("button", "restart", "restart", "Restart configurator");
+    const restart = this.create("button", "restart", "restart", "Restart configurator");
     body.replaceChildren(status, restart);
     restart.addEventListener("click", (event) => {
-      window.open(CONFIG_URL, "_blank");
+      this.win.open(CONFIG_URL, "_blank");
       event.currentTarget.disabled = true;
       event.currentTarget.textContent = "Waiting for configurator…";
-      clearInterval(this.poll);
-      this.poll = setInterval(() => this.requestConfig(), 1_000);
+      this.win.clearInterval(this.poll);
+      this.poll = this.win.setInterval(() => this.requestConfig(), 1_000);
     });
   }
 
   restoreSearchBody() {
     const body = this.node("body");
-    const status = makeElement("p", "status", "status");
-    const search = makeElement("input", "search", "search");
+    const status = this.create("p", "status", "status");
+    status.setAttribute("aria-live", "polite");
+    const search = this.create("input", "search", "search");
     search.setAttribute("aria-label", "Search expansions");
     search.setAttribute("placeholder", "Search expansions");
     search.setAttribute("autocomplete", "off");
-    const results = makeElement("div", "results", "results");
+    search.setAttribute("role", "combobox");
+    search.setAttribute("aria-autocomplete", "list");
+    search.setAttribute("aria-controls", "zenexpander-results");
+    search.setAttribute("aria-expanded", "false");
+    const results = this.create("div", "results", "results");
+    results.id = "zenexpander-results";
+    results.setAttribute("role", "listbox");
     body.replaceChildren(status, search, results);
     this.node("search").addEventListener("input", (event) => {
       this.prefixMode = false;
       this.renderResults(event.target.value);
     });
     this.node("search").addEventListener("keydown", this.handleKeydown);
+    this.renderOriginControl();
   }
 
   handleFocus(event) {
@@ -488,7 +727,7 @@ class ZenRuntime {
   }
 
   captureTarget(typedLength = 0) {
-    const target = activeEditable() ?? this.activeTarget;
+    const target = activeEditable(this.doc) ?? this.activeTarget;
     const reason = sensitiveReason(target);
     if (reason) {
       this.setStatus(reason, "error");
@@ -524,7 +763,13 @@ class ZenRuntime {
   }
 
   toggle() {
-    if (this.node("panel").hidden) this.open(true);
+    if (this.node("panel").hidden) {
+      if (!this.config && this.isChild) {
+        this.setStatus("Loading your private expansions…");
+        if (!this.configRequested) this.requestConfig();
+        this.open(false);
+      } else this.open(true);
+    }
     else this.close();
   }
 
@@ -552,11 +797,15 @@ class ZenRuntime {
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
+      if (this.consentOpen) {
+        this.cancelOriginConsent();
+        return;
+      }
       this.close();
       return;
     }
     if (this.choice) {
-      const fromChoiceSelect = event.composedPath().some((node) => node instanceof HTMLSelectElement);
+      const fromChoiceSelect = event.composedPath().some((node) => node instanceof this.win.HTMLSelectElement);
       if (event.key === "Enter" && !event.isComposing && !fromChoiceSelect) {
         event.preventDefault();
         event.stopPropagation();
@@ -601,7 +850,7 @@ class ZenRuntime {
     this.activeTarget = target;
     this.savedRange = editableRange(target, match[0].trimStart().length);
     this.open(false);
-    this.positionNear(viewportRect(target));
+    this.positionNear(viewportRect(target, this.win));
     this.renderResults(match[1]);
   }
 
@@ -610,17 +859,17 @@ class ZenRuntime {
     const panel = this.node("panel");
     const edge = 12;
     const gap = 10;
-    const width = Math.min(390, innerWidth - 24);
-    const left = Math.max(edge, Math.min(rect.right - width, innerWidth - width - edge));
+    const width = Math.min(390, this.win.innerWidth - 24);
+    const left = Math.max(edge, Math.min(rect.right - width, this.win.innerWidth - width - edge));
     const aboveSpace = Math.max(0, rect.top - gap - edge);
-    const belowSpace = Math.max(0, innerHeight - rect.bottom - gap - edge);
+    const belowSpace = Math.max(0, this.win.innerHeight - rect.bottom - gap - edge);
     const placeAbove = aboveSpace >= belowSpace;
     const sideSpace = placeAbove ? aboveSpace : belowSpace;
-    const available = Math.min(580, innerHeight - (edge * 2), Math.max(180, sideSpace));
+    const available = Math.min(580, this.win.innerHeight - (edge * 2), Math.max(180, sideSpace));
     panel.style.maxHeight = `${available}px`;
     const height = Math.min(panel.scrollHeight || panel.getBoundingClientRect().height || 220, available);
     const preferredTop = placeAbove ? rect.top - gap - height : rect.bottom + gap;
-    const top = Math.max(edge, Math.min(preferredTop, innerHeight - edge - height));
+    const top = Math.max(edge, Math.min(preferredTop, this.win.innerHeight - edge - height));
     panel.style.left = `${left}px`;
     panel.style.top = `${top}px`;
     panel.style.right = "auto";
@@ -635,36 +884,45 @@ class ZenRuntime {
     this.activeIndex = 0;
     const container = this.node("results");
     container.replaceChildren();
+    this.node("search")?.setAttribute("aria-expanded", String(Boolean(this.results.length)));
     if (!this.results.length) {
-      const empty = document.createElement("div");
+      const empty = this.doc.createElement("div");
       empty.className = "empty";
       empty.textContent = "No expansion matches yet.";
       container.append(empty);
-      if (this.anchorRect) requestAnimationFrame(() => this.positionNear(this.activeTarget ? viewportRect(this.activeTarget) : this.anchorRect));
+      if (this.anchorRect) this.win.requestAnimationFrame(() => this.positionNear(this.activeTarget ? viewportRect(this.activeTarget, this.win) : this.anchorRect));
       return;
     }
     this.results.forEach((expansion, index) => {
-      const button = document.createElement("button");
+      const button = this.doc.createElement("button");
       button.className = "result";
+      button.id = `zenexpander-result-${index}`;
+      button.setAttribute("role", "option");
+      button.setAttribute("aria-selected", String(index === this.activeIndex));
       button.dataset.active = String(index === this.activeIndex);
-      const strong = document.createElement("strong");
+      const strong = this.doc.createElement("strong");
       strong.textContent = `${this.config.prefix}${expansion.shortcut} · ${expansion.label || labelForType(expansion.type)}`;
-      const span = document.createElement("span");
+      const span = this.doc.createElement("span");
       span.textContent = preview(expansion);
-      const em = document.createElement("em");
+      const em = this.doc.createElement("em");
       em.textContent = labelForType(expansion.type);
       button.append(strong, span, em);
       button.addEventListener("mouseenter", () => { this.activeIndex = index; this.paintActive(); });
       button.addEventListener("click", () => this.choose(expansion));
       container.append(button);
     });
-    if (this.anchorRect) requestAnimationFrame(() => this.positionNear(this.activeTarget ? viewportRect(this.activeTarget) : this.anchorRect));
+    if (this.anchorRect) this.win.requestAnimationFrame(() => this.positionNear(this.activeTarget ? viewportRect(this.activeTarget, this.win) : this.anchorRect));
   }
 
   paintActive() {
     [...this.node("results").children].forEach((item, index) => {
       item.dataset.active = String(index === this.activeIndex);
+      item.setAttribute("aria-selected", String(index === this.activeIndex));
     });
+    this.node("search")?.setAttribute(
+      "aria-activedescendant",
+      this.results[this.activeIndex] ? `zenexpander-result-${this.activeIndex}` : "",
+    );
   }
 
   choose(expansion) {
@@ -685,26 +943,26 @@ class ZenRuntime {
     this.confirmChoice = () => this.insert(renderChoice(expansion, values));
     const body = this.node("body");
     body.replaceChildren();
-    const title = document.createElement("h2");
+    const title = this.doc.createElement("h2");
     title.className = "choice-title";
     title.textContent = `${this.config.prefix}${expansion.shortcut}`;
-    const sentence = document.createElement("p");
+    const sentence = this.doc.createElement("p");
     sentence.className = "sentence";
     sentence.textContent = expansion.label || "Choose the details, then confirm.";
-    const fields = document.createElement("div");
+    const fields = this.doc.createElement("div");
     fields.className = "fields";
-    const result = document.createElement("p");
+    const result = this.doc.createElement("p");
     result.className = "preview";
     const paint = () => { result.textContent = renderChoice(expansion, values); };
     for (const field of expansion.fields) {
-      const wrap = document.createElement("div");
+      const wrap = this.doc.createElement("div");
       wrap.className = "field";
-      const label = document.createElement("label");
+      const label = this.doc.createElement("label");
       label.textContent = field.name;
-      const select = document.createElement("select");
+      const select = this.doc.createElement("select");
       select.setAttribute("aria-label", field.name);
       for (const option of field.options) {
-        const node = document.createElement("option");
+        const node = this.doc.createElement("option");
         node.value = option;
         node.textContent = option;
         select.append(node);
@@ -713,14 +971,14 @@ class ZenRuntime {
       wrap.append(label, select);
       fields.append(wrap);
     }
-    const actions = document.createElement("div");
+    const actions = this.doc.createElement("div");
     actions.className = "actions";
-    const confirm = document.createElement("button");
+    const confirm = this.doc.createElement("button");
     confirm.className = "primary";
     confirm.setAttribute("aria-label", "Confirm and paste. Press Enter");
     confirm.setAttribute("aria-keyshortcuts", "Enter");
-    confirm.append(document.createTextNode("Confirm & paste"));
-    const enterKey = document.createElement("kbd");
+    confirm.append(this.doc.createTextNode("Confirm & paste"));
+    const enterKey = this.doc.createElement("kbd");
     enterKey.setAttribute("aria-hidden", "true");
     enterKey.textContent = "Enter";
     confirm.append(enterKey);
@@ -728,7 +986,7 @@ class ZenRuntime {
     actions.append(confirm);
     body.append(title, sentence, fields, result, actions);
     paint();
-    if (this.anchorRect) requestAnimationFrame(() => this.positionNear(this.activeTarget ? viewportRect(this.activeTarget) : this.anchorRect));
+    if (this.anchorRect) this.win.requestAnimationFrame(() => this.positionNear(this.activeTarget ? viewportRect(this.activeTarget, this.win) : this.anchorRect));
     fields.querySelector("select")?.focus();
   }
 
@@ -751,7 +1009,7 @@ class ZenRuntime {
         if (!(isInput(target) && text.includes("\n"))) {
           target.setRangeText(text, range.start, range.end, "end");
           dispatchEditorInput(target, text);
-          await waitForEditor();
+          await waitForEditor(this.win);
           inserted = editableText(target) !== before && containsInsertedText(target, text);
         }
       } else {
@@ -760,7 +1018,7 @@ class ZenRuntime {
         selection.removeAllRanges();
         selection.addRange(liveRange);
         inserted = Boolean(doc.execCommand?.("insertText", false, text));
-        await waitForEditor();
+        await waitForEditor(this.win);
         inserted = inserted && editableText(target) !== before && containsInsertedText(target, text);
         if (!inserted && editableText(target) === before && !text.includes("\n")) {
           const fallbackRange = rangeFromOffsets(target, range.start, range.end);
@@ -774,7 +1032,7 @@ class ZenRuntime {
           selection.removeAllRanges();
           selection.addRange(fallbackRange);
           dispatchEditorInput(target, text);
-          await waitForEditor();
+          await waitForEditor(this.win);
           inserted = editableText(target) !== before && containsInsertedText(target, text);
         }
       }
@@ -793,7 +1051,7 @@ class ZenRuntime {
         selection.addRange(rangeFromOffsets(target, range.start, range.end));
       }
       try {
-        await navigator.clipboard.writeText(text);
+        await this.win.navigator.clipboard.writeText(text);
         this.choice = null;
         this.confirmChoice = null;
         this.prefixMode = false;
@@ -801,11 +1059,11 @@ class ZenRuntime {
         this.notice = "This editor blocked direct insertion. Copied—press Ctrl+V to replace the shortcut.";
         this.open(false);
         this.setStatus(this.notice);
-        this.positionNear(viewportRect(target));
+        this.positionNear(viewportRect(target, this.win));
         target.focus();
         return;
       } catch {
-        window.prompt("Copy this text, then paste it:", text);
+        this.win.prompt("Copy this text, then paste it:", text);
       }
     }
     this.notice = "";
@@ -814,15 +1072,27 @@ class ZenRuntime {
 
   boot() {
     this.build();
-    this.open(false);
     if (!/^[a-f0-9]{64}$/i.test(PAIRING_TOKEN)) {
+      this.open(false);
       this.showDisconnected("This bookmark is not paired. Install it again from ZenExpander.");
       return;
     }
+    if (this.bridgePort) {
+      this.attachPort(this.bridgePort, false);
+      return;
+    }
+    this.open(false);
     this.connect();
   }
 }
 
-const existing = document.getElementById(ROOT_ID);
-if (existing) existing.remove();
-new ZenRuntime().boot();
+function installRuntime(win = window, bridgePort = null, options = {}) {
+  const existing = win.document.getElementById(ROOT_ID);
+  if (existing && options.isChild) return null;
+  existing?.remove();
+  const runtime = new ZenRuntime(win, bridgePort, options);
+  runtime.boot();
+  return runtime;
+}
+
+installRuntime(window);

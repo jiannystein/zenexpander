@@ -25,6 +25,8 @@ test("bridge is data-only and avoids timer-based false disconnects", async () =>
   assert.doesNotMatch(worker, /configurator-closed/);
   assert.match(worker, /config-unavailable/);
   assert.match(worker, /room\.config/);
+  assert.match(worker, /armedOrigins/);
+  assert.match(worker, /zen:create-child-port/);
   assert.doesNotMatch(worker, /\bfetch\s*\(/);
   assert.doesNotMatch(worker, /\beval\s*\(/);
   assert.doesNotMatch(worker, /new Function/);
@@ -62,7 +64,7 @@ test("runtime uses the paired leaf launcher and lets Escape close every popup st
   const runtime = await readFile(path.join(root, "src", "bookmarklet", "runtime.js"), "utf8");
   assert.match(runtime, /import LEAF_ICON/);
   assert.match(runtime, /launcherLogo\.src = LEAF_ICON/);
-  assert.match(runtime, /document\.createTextNode\(" to close"\)/);
+  assert.match(runtime, /this\.doc\.createTextNode\(" to close"\)/);
   const keyHandler = runtime.slice(runtime.indexOf("handleKeydown(event) {"), runtime.indexOf("handleInput(event) {"));
   assert.ok(keyHandler.indexOf('event.key === "Escape"') < keyHandler.indexOf("if (this.choice) {"));
 });
@@ -76,12 +78,13 @@ test("choice popup uses one primary action and exposes safe Escape and Enter sho
   assert.match(runtime, /this\.confirmChoice\?\.\(\)/);
 });
 
-test("configurator groups shortcut hints and mirrors the single choice action", async () => {
+test("configurator separates copy-only preview from the widget paste action", async () => {
   const app = await readFile(path.join(root, "src", "App.jsx"), "utf8");
   const styles = await readFile(path.join(root, "src", "styles.css"), "utf8");
   assert.match(app, /className="shortcut-hint"/);
   assert.match(app, /<kbd aria-hidden="true">Esc<\/kbd><span>to close<\/span>/);
   assert.match(app, /<span>Confirm & paste<\/span><kbd aria-hidden="true">Enter<\/kbd>/);
+  assert.match(app, />\s*Copy test\s*<\/button>/);
   assert.doesNotMatch(app, />Back<\/button>/);
   assert.match(app, /event\.target instanceof HTMLSelectElement/);
   assert.match(styles, /\.command-meta \{ display: flex; justify-content: flex-end;/);
@@ -149,8 +152,30 @@ test("runtime reconstructs a live editor range and verifies insertion", async ()
   assert.match(runtime, /function rangeFromOffsets/);
   assert.match(runtime, /beforeCaret\.toString\(\)\.length/);
   assert.match(runtime, /const liveRange = rangeFromOffsets/);
-  assert.match(runtime, /await waitForEditor\(\)/);
+  assert.match(runtime, /await waitForEditor\(this\.win\)/);
   assert.match(runtime, /setTimeout\(resolve, 260\)/);
   assert.match(runtime, /containsInsertedText\(target, text\)/);
   assert.match(runtime, /press Ctrl\+V to replace the shortcut/);
+});
+
+test("runtime requires exact-origin consent before best-effort child propagation", async () => {
+  const runtime = await readFile(path.join(root, "src", "bookmarklet", "runtime.js"), "utf8");
+  assert.match(runtime, /Use ZenExpander in new tabs on this site\?/);
+  assert.match(runtime, /this\.win\.location\.origin/);
+  assert.match(runtime, /type: "zen:arm-origin"/);
+  assert.match(runtime, /type: "zen:disarm-origin"/);
+  assert.match(runtime, /runtime\.nativeOpen\.apply\(this, args\)/);
+  assert.match(runtime, /type: "zen:create-child-port"/);
+  assert.match(runtime, /installRuntime\(child, channel\.port2, \{ isChild: true \}\)/);
+  assert.match(runtime, /Couldn’t open ZenExpander in that tab/);
+  assert.doesNotMatch(runtime, /querySelectorAll\([^)]*target/);
+});
+
+test("configurator exposes undoable deletion and session-only feature guidance", async () => {
+  const app = await readFile(path.join(root, "src", "App.jsx"), "utf8");
+  assert.match(app, /window\.setTimeout\(\(\) => \{/);
+  assert.match(app, /\}, 7_000\)/);
+  assert.match(app, />Undo<\/button>/);
+  assert.match(app, /Optional: use related tabs/);
+  assert.match(app, /Consent lasts for the browser session and is never saved, synced, or exported/);
 });

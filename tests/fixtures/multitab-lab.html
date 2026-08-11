@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ZenExpander multi-tab lab</title>
+  <style>
+    body { margin: 0; padding: 32px; color: #281431; background: #faf6fb; font: 16px/1.5 system-ui, sans-serif; }
+    main { width: min(720px, 100%); }
+    button, a { display: inline-flex; min-height: 44px; align-items: center; margin: 0 8px 8px 0; padding: 0 14px; border: 1px solid #0a8276; background: #fff; color: #075e56; }
+    [contenteditable] { min-height: 96px; margin-top: 24px; padding: 12px; border: 1px solid #75697c; background: #fff; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Multi-tab acceptance lab</h1>
+    <p>Every control opens a page; nothing saves or sends.</p>
+    <button id="open-same" type="button">Open same-origin ticket</button>
+    <button id="open-cross" type="button">Open cross-origin ticket</button>
+    <button id="open-noopener" type="button">Open isolated ticket</button>
+    <a id="open-anchor" href="./multitab-lab.html?opened=anchor" target="_blank" rel="noopener">Open browser-managed ticket</a>
+    <div id="editor" contenteditable="true" role="textbox" aria-label="Unsaved ticket note"></div>
+  </main>
+  <script>
+    window.__sendCount = 0;
+    document.getElementById("open-same").addEventListener("click", () => {
+      window.open("./multitab-lab.html?opened=same", "_blank");
+    });
+    document.getElementById("open-cross").addEventListener("click", () => {
+      window.open("http://localhost:4321/tests/fixtures/multitab-lab.html?opened=cross", "_blank");
+    });
+    document.getElementById("open-noopener").addEventListener("click", () => {
+      window.open("./multitab-lab.html?opened=noopener", "_blank", "noopener");
+    });
+  </script>
+</body>
+</html>

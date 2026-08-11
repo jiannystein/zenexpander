@@ -28,7 +28,12 @@ await build({
 const bundled = (await readFile(runtimePath, "utf8")).trim();
 const optimized = await minify(bundled, {
   compress: { passes: 5, toplevel: true, unsafe_arrows: true, unsafe_methods: true },
-  mangle: { toplevel: true },
+  mangle: {
+    toplevel: true,
+    properties: {
+      regex: /^(?:win|doc|host|shadow|bridgeWindow|bridgePort|isChild|configRequested|originArmed|originConsented|consentOpen|nativeOpen|openWrapper|trackedWindows|poll|activeTarget|savedRange|prefixMode|query|anchorRect|results|activeIndex|choice|confirmChoice|documents|frames|observers|inserting|notice|node|create|build|watchFrameContent|watchFrame|watchDocument|setStatus|renderOriginControl|cancelOriginConsent|armOrigin|disarmOrigin|attachPort|handleWindowMessage|handleBridge|requestConfig|connect|installOpenInterceptor|removeOpenInterceptor|propagationFallback|trackOpenedWindow|bootstrapChild|showDisconnected|restoreSearchBody|handleFocus|captureTarget|open|close|toggle|shortcutMatches|handleKeydown|handleInput|positionNear|renderResults|paintActive|choose|showChoice|insert|boot)$/,
+    },
+  },
   ecma: 2022,
   format: { comments: false, ascii_only: true },
 });

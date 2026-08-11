@@ -11,15 +11,16 @@ Reviewed against official project documentation on 2026-08-08.
 
 ## Product-layer conclusion
 
-ZenExpander is not a system-wide text expander. A bookmarklet cannot monitor Chrome globally or persist across navigation without being invoked on the page. The MVP instead owns a narrower promise:
+ZenExpander is not a system-wide text expander. A bookmarklet cannot monitor Chrome globally or control arbitrary tabs. The MVP instead owns a narrower promise:
 
-- zero-install, page-scoped expansion after deliberate bookmarklet activation;
+- zero-install expansion after deliberate first-page activation;
+- optional, exact-origin, session-only propagation to compatible windows opened through a usable same-origin `window.open` reference;
 - a visual, non-YAML configurator for direct, choice, and equal-random snippets;
 - prefix discovery and a configurable search shortcut while the widget is active;
 - direct insertion in compatible web editors with copy-and-manual-paste fallback;
 - no accounts, remote sync, telemetry, clipboard reads, or executable configuration.
 
-This scope is the correct privacy and deployment trade-off for company-managed Chrome. A browser extension can later add persistent activation and broader site compatibility without changing the versioned configuration format.
+This scope is the correct privacy and deployment trade-off for company-managed Chrome. Best-effort child registration removes repetition without pretending to provide extension-level tab discovery. A browser extension could later add persistent activation and broader site compatibility without changing the versioned configuration format.
 
 ## UX decisions carried into the MVP
 

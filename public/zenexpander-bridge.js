@@ -32,7 +32,7 @@ if (
       name: "zenexpander-config-bridge-v2",
     });
     worker.port.start();
-    worker.port.postMessage({ type: "zen:register", role: "runtime", token });
+    worker.port.postMessage({ type: "zen:register", role: "runtime", token, origin: parsedOrigin });
     window.opener.postMessage({ type: "zen:bridge-port", nonce }, parsedOrigin, [worker.port]);
     status.textContent = "Connected. Returning to your page…";
     window.setTimeout(() => window.close(), 220);
