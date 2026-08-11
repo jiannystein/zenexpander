@@ -19,7 +19,7 @@ await build({
   minify: true,
   format: "iife",
   platform: "browser",
-  target: ["chrome120"],
+  target: ["chrome120", "edge120"],
   outfile: runtimePath,
   loader: { ".png": "dataurl" },
   legalComments: "none",

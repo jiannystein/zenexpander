@@ -1,6 +1,6 @@
 # Security policy
 
-ZenExpander is a static, local-first Chrome bookmarklet application. It has no application backend, user accounts, telemetry, remote sync, or content logging.
+ZenExpander is a static, local-first Chrome and Edge bookmarklet application. It has no application backend, user accounts, telemetry, remote sync, or content logging.
 
 ## Supported version
 
@@ -8,7 +8,7 @@ Security updates are applied to the latest revision on the `main` branch and the
 
 ## Data and trust model
 
-- Durable configuration is stored in the GitHub Pages origin's Chrome IndexedDB.
+- Durable configuration is stored in the GitHub Pages origin's browser IndexedDB.
 - Export and import are explicit user actions. Imports are JSON-only, schema-validated, size-limited to 1 MB, and cannot contain executable configuration.
 - The bridge stores the latest validated config only in browser session memory.
 - ZenExpander inserts literal text and disables itself in password, payment, and one-time-code fields.
@@ -27,5 +27,6 @@ For general bugs that do not expose security-sensitive details, use the reposito
 ## Out of scope
 
 - Managed-browser policies that intentionally disable JavaScript bookmarks.
+- Sandboxed or cross-origin iframe editors and closed shadow roots that the browser intentionally isolates from the active page.
 - A malicious page reading data after the user deliberately activates the bookmarklet on that page; this is a documented platform boundary, although reductions in exposed data are welcome.
 - Social engineering that asks users to replace the official bookmarklet with unrelated JavaScript.

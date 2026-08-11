@@ -6,10 +6,29 @@ const BRIDGE_URL = "__ZENEXPANDER_BRIDGE_URL__";
 const BRIDGE_ORIGIN = new URL(BRIDGE_URL).origin;
 const CONFIG_URL = new URL("./", BRIDGE_URL).href;
 
+function isInput(target) {
+  return target?.tagName === "INPUT";
+}
+
+function isTextControl(target) {
+  return isInput(target) || target?.tagName === "TEXTAREA";
+}
+
 function isEditable(target) {
-  return target instanceof HTMLInputElement
-    || target instanceof HTMLTextAreaElement
-    || Boolean(target?.isContentEditable);
+  return isTextControl(target) || Boolean(target?.isContentEditable);
+}
+
+function documentFor(target) {
+  return target?.ownerDocument ?? document;
+}
+
+function selectionFor(target) {
+  const root = target?.getRootNode?.();
+  return root?.getSelection?.() ?? documentFor(target).getSelection?.() ?? getSelection();
+}
+
+function editableFromEvent(event) {
+  return event.composedPath().find(isEditable) ?? (isEditable(event.target) ? event.target : null);
 }
 
 function sensitiveReason(target) {
@@ -22,7 +41,7 @@ function sensitiveReason(target) {
     target.getAttribute?.("aria-label"),
     target.getAttribute?.("placeholder"),
   ].filter(Boolean).join(" ").toLowerCase();
-  if (target instanceof HTMLInputElement && target.type === "password") return "ZenExpander is disabled in password fields.";
+  if (isInput(target) && target.type === "password") return "ZenExpander is disabled in password fields.";
   if (/one-time-code|otp|verification|security.?code|passcode/.test(attributes)) return "ZenExpander is disabled in one-time-code fields.";
   if (/cc-|credit.?card|card.?number|cvv|cvc|payment/.test(attributes)) return "ZenExpander is disabled in payment fields.";
   return "";
@@ -30,8 +49,46 @@ function sensitiveReason(target) {
 
 function activeEditable() {
   let target = document.activeElement;
-  while (target?.shadowRoot?.activeElement) target = target.shadowRoot.activeElement;
+  while (target) {
+    const shadowTarget = target.shadowRoot?.activeElement;
+    if (shadowTarget) {
+      target = shadowTarget;
+      continue;
+    }
+    if (target.tagName === "IFRAME") {
+      try {
+        const frameTarget = target.contentDocument?.activeElement;
+        if (frameTarget) {
+          target = frameTarget;
+          continue;
+        }
+      } catch {
+        return null;
+      }
+    }
+    break;
+  }
   return isEditable(target) ? target : null;
+}
+
+function viewportRect(target) {
+  const rect = target.getBoundingClientRect();
+  let left = rect.left;
+  let right = rect.right;
+  let top = rect.top;
+  let bottom = rect.bottom;
+  let view = documentFor(target).defaultView;
+  while (view && view !== window) {
+    const frame = view.frameElement;
+    if (!frame) break;
+    const frameRect = frame.getBoundingClientRect();
+    left += frameRect.left + frame.clientLeft;
+    right += frameRect.left + frame.clientLeft;
+    top += frameRect.top + frame.clientTop;
+    bottom += frameRect.top + frame.clientTop;
+    view = documentFor(frame).defaultView;
+  }
+  return { left, right, top, bottom, width: rect.width, height: rect.height };
 }
 
 function labelForType(type) {
@@ -62,10 +119,10 @@ function matches(expansion, query) {
 }
 
 function readBeforeCaret(target) {
-  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+  if (isTextControl(target)) {
     return target.value.slice(0, target.selectionStart ?? 0);
   }
-  const selection = getSelection();
+  const selection = selectionFor(target);
   if (!selection?.rangeCount || !target.contains(selection.anchorNode)) return "";
   const range = selection.getRangeAt(0).cloneRange();
   range.selectNodeContents(target);
@@ -74,29 +131,30 @@ function readBeforeCaret(target) {
 }
 
 function editableRange(target, typedLength = 0) {
-  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+  if (isTextControl(target)) {
     const end = target.selectionStart ?? target.value.length;
     return { kind: "text", target, start: Math.max(0, end - typedLength), end };
   }
-  const selection = getSelection();
+  const doc = documentFor(target);
+  const selection = selectionFor(target);
   if (!selection?.rangeCount || !target.contains(selection.anchorNode)) return null;
   const caret = selection.getRangeAt(0).cloneRange();
-  const beforeCaret = document.createRange();
+  const beforeCaret = doc.createRange();
   beforeCaret.selectNodeContents(target);
   beforeCaret.setEnd(caret.endContainer, caret.endOffset);
   const end = beforeCaret.toString().length;
   if (!typedLength) return { kind: "range", target, range: caret, start: end, end };
-  const walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT);
+  const walker = doc.createTreeWalker(target, 4);
   const nodes = [];
   let node;
   while ((node = walker.nextNode())) nodes.push(node);
   const endNode = caret.endContainer;
   let remaining = typedLength;
-  const range = document.createRange();
+  const range = doc.createRange();
   range.setEnd(caret.endContainer, caret.endOffset);
-  let index = nodes.indexOf(endNode.nodeType === Node.TEXT_NODE ? endNode : null);
+  let index = nodes.indexOf(endNode.nodeType === 3 ? endNode : null);
   if (index < 0) index = nodes.length - 1;
-  let offset = endNode.nodeType === Node.TEXT_NODE ? caret.endOffset : (nodes[index]?.data.length ?? 0);
+  let offset = endNode.nodeType === 3 ? caret.endOffset : (nodes[index]?.data.length ?? 0);
   while (index >= 0) {
     const current = nodes[index];
     if (remaining <= offset) {
@@ -111,8 +169,9 @@ function editableRange(target, typedLength = 0) {
 }
 
 function rangeFromOffsets(target, start, end) {
-  const range = document.createRange();
-  const walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT);
+  const doc = documentFor(target);
+  const range = doc.createRange();
+  const walker = doc.createTreeWalker(target, 4);
   let position = 0;
   let startSet = false;
   let endSet = false;
@@ -136,7 +195,7 @@ function rangeFromOffsets(target, start, end) {
 }
 
 function editableText(target) {
-  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+  if (isTextControl(target)) {
     return normalizeNewlines(target.value);
   }
   const blocks = [...(target?.childNodes ?? [])];
@@ -151,6 +210,16 @@ function editableText(target) {
 
 function containsInsertedText(target, text) {
   return editableText(target).includes(normalizeNewlines(text));
+}
+
+function dispatchEditorInput(target, text) {
+  const Input = documentFor(target).defaultView?.InputEvent ?? InputEvent;
+  target.dispatchEvent(new Input("input", {
+    bubbles: true,
+    composed: true,
+    inputType: "insertText",
+    data: text,
+  }));
 }
 
 function waitForEditor() {
@@ -221,6 +290,11 @@ class ZenRuntime {
     this.activeIndex = 0;
     this.choice = null;
     this.confirmChoice = null;
+    this.documents = new WeakSet();
+    this.frames = new WeakSet();
+    this.observers = [];
+    this.inserting = false;
+    this.notice = "";
     this.handleWindowMessage = this.handleWindowMessage.bind(this);
     this.handleKeydown = this.handleKeydown.bind(this);
     this.handleInput = this.handleInput.bind(this);
@@ -276,9 +350,46 @@ class ZenRuntime {
     });
     this.node("search").addEventListener("keydown", this.handleKeydown);
     window.addEventListener("message", this.handleWindowMessage);
-    document.addEventListener("keydown", this.handleKeydown, true);
-    document.addEventListener("input", this.handleInput, true);
-    document.addEventListener("focusin", this.handleFocus, true);
+    this.watchDocument(document);
+  }
+
+  watchFrameContent(frame) {
+    try {
+      const frameDocument = frame.contentDocument;
+      if (frameDocument?.documentElement) this.watchDocument(frameDocument);
+    } catch {
+      // Sandboxed and cross-origin frames are intentionally outside a bookmarklet's reach.
+    }
+  }
+
+  watchFrame(frame) {
+    if (!this.frames.has(frame)) {
+      this.frames.add(frame);
+      frame.addEventListener("load", () => this.watchFrameContent(frame));
+    }
+    this.watchFrameContent(frame);
+  }
+
+  watchDocument(doc) {
+    if (!doc?.documentElement || this.documents.has(doc)) return;
+    this.documents.add(doc);
+    doc.addEventListener("keydown", this.handleKeydown, true);
+    doc.addEventListener("input", this.handleInput, true);
+    doc.addEventListener("focusin", this.handleFocus, true);
+    for (const frame of doc.querySelectorAll("iframe")) this.watchFrame(frame);
+    const Observer = doc.defaultView?.MutationObserver;
+    if (!Observer) return;
+    const observer = new Observer((records) => {
+      for (const record of records) {
+        for (const node of record.addedNodes) {
+          if (node.nodeType !== 1) continue;
+          if (node.tagName === "IFRAME") this.watchFrame(node);
+          for (const frame of node.querySelectorAll?.("iframe") ?? []) this.watchFrame(frame);
+        }
+      }
+    });
+    observer.observe(doc.documentElement, { childList: true, subtree: true });
+    this.observers.push(observer);
   }
 
   setStatus(message, tone = "") {
@@ -313,7 +424,7 @@ class ZenRuntime {
       this.config = message.config;
       if (this.choice) return;
       if (!this.node("search")) this.restoreSearchBody();
-      this.setStatus(`${this.config.expansions.length} private expansions ready.`);
+      this.setStatus(this.notice || `${this.config.expansions.length} private expansions ready.`);
       this.renderResults(this.query);
       return;
     }
@@ -333,7 +444,7 @@ class ZenRuntime {
     this.nonce = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const hash = new URLSearchParams({ token: PAIRING_TOKEN, nonce: this.nonce, origin: location.origin });
     this.bridgeWindow = window.open(`${BRIDGE_URL}#${hash}`, "_blank");
-    if (!this.bridgeWindow) this.showDisconnected("Chrome blocked the helper tab. Allow pop-ups, then restart.");
+    if (!this.bridgeWindow) this.showDisconnected("Your browser blocked the helper tab. Allow pop-ups, then restart.");
   }
 
   showDisconnected(message) {
@@ -371,8 +482,9 @@ class ZenRuntime {
   }
 
   handleFocus(event) {
-    if (!isEditable(event.target) || sensitiveReason(event.target)) return;
-    this.activeTarget = event.target;
+    const target = editableFromEvent(event);
+    if (!target || sensitiveReason(target)) return;
+    this.activeTarget = target;
   }
 
   captureTarget(typedLength = 0) {
@@ -470,12 +582,15 @@ class ZenRuntime {
   }
 
   handleInput(event) {
-    if (!this.config?.settings?.prefixTrigger || !isEditable(event.target)) return;
-    if (sensitiveReason(event.target)) {
+    if (this.inserting) return;
+    const target = editableFromEvent(event);
+    if (!this.config?.settings?.prefixTrigger || !target) return;
+    if (event.isTrusted) this.notice = "";
+    if (sensitiveReason(target)) {
       this.close();
       return;
     }
-    const before = readBeforeCaret(event.target);
+    const before = readBeforeCaret(target);
     const prefix = this.config.prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const match = before.match(new RegExp(`(?:^|\\s)${prefix}([a-z0-9_-]*)$`, "i"));
     if (!match) {
@@ -483,10 +598,10 @@ class ZenRuntime {
       return;
     }
     this.prefixMode = true;
-    this.activeTarget = event.target;
-    this.savedRange = editableRange(event.target, match[0].trimStart().length);
+    this.activeTarget = target;
+    this.savedRange = editableRange(target, match[0].trimStart().length);
     this.open(false);
-    this.positionNear(event.target.getBoundingClientRect());
+    this.positionNear(viewportRect(target));
     this.renderResults(match[1]);
   }
 
@@ -525,7 +640,7 @@ class ZenRuntime {
       empty.className = "empty";
       empty.textContent = "No expansion matches yet.";
       container.append(empty);
-      if (this.anchorRect) requestAnimationFrame(() => this.positionNear(this.activeTarget?.getBoundingClientRect() ?? this.anchorRect));
+      if (this.anchorRect) requestAnimationFrame(() => this.positionNear(this.activeTarget ? viewportRect(this.activeTarget) : this.anchorRect));
       return;
     }
     this.results.forEach((expansion, index) => {
@@ -543,7 +658,7 @@ class ZenRuntime {
       button.addEventListener("click", () => this.choose(expansion));
       container.append(button);
     });
-    if (this.anchorRect) requestAnimationFrame(() => this.positionNear(this.activeTarget?.getBoundingClientRect() ?? this.anchorRect));
+    if (this.anchorRect) requestAnimationFrame(() => this.positionNear(this.activeTarget ? viewportRect(this.activeTarget) : this.anchorRect));
   }
 
   paintActive() {
@@ -613,7 +728,7 @@ class ZenRuntime {
     actions.append(confirm);
     body.append(title, sentence, fields, result, actions);
     paint();
-    if (this.anchorRect) requestAnimationFrame(() => this.positionNear(this.activeTarget?.getBoundingClientRect() ?? this.anchorRect));
+    if (this.anchorRect) requestAnimationFrame(() => this.positionNear(this.activeTarget ? viewportRect(this.activeTarget) : this.anchorRect));
     fields.querySelector("select")?.focus();
   }
 
@@ -627,22 +742,24 @@ class ZenRuntime {
       return;
     }
     const before = editableText(target);
+    const doc = documentFor(target);
     let inserted = false;
+    this.inserting = true;
     try {
       target.focus();
       if (range.kind === "text") {
-        if (!(target instanceof HTMLInputElement && text.includes("\n"))) {
+        if (!(isInput(target) && text.includes("\n"))) {
           target.setRangeText(text, range.start, range.end, "end");
-          target.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text }));
+          dispatchEditorInput(target, text);
           await waitForEditor();
           inserted = editableText(target) !== before && containsInsertedText(target, text);
         }
       } else {
-        const selection = getSelection();
+        const selection = selectionFor(target);
         const liveRange = rangeFromOffsets(target, range.start, range.end);
         selection.removeAllRanges();
         selection.addRange(liveRange);
-        inserted = Boolean(document.execCommand?.("insertText", false, text));
+        inserted = Boolean(doc.execCommand?.("insertText", false, text));
         await waitForEditor();
         inserted = inserted && editableText(target) !== before && containsInsertedText(target, text);
         if (!inserted && editableText(target) === before && !text.includes("\n")) {
@@ -650,26 +767,28 @@ class ZenRuntime {
           selection.removeAllRanges();
           selection.addRange(fallbackRange);
           fallbackRange.deleteContents();
-          const node = document.createTextNode(text);
+          const node = doc.createTextNode(text);
           fallbackRange.insertNode(node);
           fallbackRange.setStartAfter(node);
           fallbackRange.collapse(true);
           selection.removeAllRanges();
           selection.addRange(fallbackRange);
-          target.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text }));
+          dispatchEditorInput(target, text);
           await waitForEditor();
           inserted = editableText(target) !== before && containsInsertedText(target, text);
         }
       }
     } catch {
       inserted = false;
+    } finally {
+      this.inserting = false;
     }
     if (!inserted) {
       target.focus();
       if (range.kind === "text") {
         target.setSelectionRange(range.start, range.end);
       } else {
-        const selection = getSelection();
+        const selection = selectionFor(target);
         selection.removeAllRanges();
         selection.addRange(rangeFromOffsets(target, range.start, range.end));
       }
@@ -677,14 +796,19 @@ class ZenRuntime {
         await navigator.clipboard.writeText(text);
         this.choice = null;
         this.confirmChoice = null;
+        this.prefixMode = false;
         this.restoreSearchBody();
-        this.setStatus("This editor blocked direct insertion. Copied—press Ctrl+V to replace the shortcut.");
+        this.notice = "This editor blocked direct insertion. Copied—press Ctrl+V to replace the shortcut.";
+        this.open(false);
+        this.setStatus(this.notice);
+        this.positionNear(viewportRect(target));
         target.focus();
         return;
       } catch {
         window.prompt("Copy this text, then paste it:", text);
       }
     }
+    this.notice = "";
     this.close();
   }
 

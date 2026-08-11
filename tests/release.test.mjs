@@ -39,6 +39,7 @@ test("release contains the static app and bookmarklet bridge", async () => {
 
   assert.equal(await exists(path.join(root, "dist", "server")), false, "Server output must not ship");
   assert.equal(await exists(path.join(root, "dist", ".openai")), false, "Prototype hosting metadata must not ship");
+  assert.equal(await exists(path.join(output, "dynamics-editor-lab.html")), false, "Test-only Dynamics fixture must not ship");
   assert.equal(await exists(path.join(root, "public", "zenexpander-bookmarklet.min.js")), false, "Intermediate bundle must stay out of public assets");
 });
 

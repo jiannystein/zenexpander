@@ -115,16 +115,19 @@ test("configurator and widget preserve user-authored line breaks", async () => {
   assert.match(runtime, /function containsInsertedText/);
   assert.match(runtime, /blocks\.every\(\(node\) => node\.nodeType === 1 && \/\^\(DIV\|P\)\$\//);
   assert.match(runtime, /\.preview\{[^}]*white-space:pre-wrap/);
-  assert.match(runtime, /target instanceof HTMLInputElement && text\.includes\("\\n"\)/);
+  assert.match(runtime, /isInput\(target\) && text\.includes\("\\n"\)/);
 });
 
 test("runtime reads Google Chat block editors as the same logical newlines", async () => {
   const runtime = await readFile(path.join(root, "src", "bookmarklet", "runtime.js"), "utf8");
   const helpers = runtime.slice(
-    runtime.indexOf("function normalizeNewlines"),
+    runtime.indexOf("function isInput"),
     runtime.indexOf("function waitForEditor"),
   );
   const context = {
+    document: {},
+    getSelection() {},
+    InputEvent: class InputEvent {},
     HTMLInputElement: class HTMLInputElement {},
     HTMLTextAreaElement: class HTMLTextAreaElement {},
   };
