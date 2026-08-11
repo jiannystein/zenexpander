@@ -82,7 +82,7 @@ function Onboarding({ onCreate, onImport, error }) {
             <input type="file" accept="application/json,.json" onChange={onImport} />
           </label>
         </div>
-        <div className="privacy-line"><LockKey /> Stored in Chrome IndexedDB · never uploaded</div>
+        <div className="privacy-line"><LockKey /> Stored in this browser’s IndexedDB · never uploaded</div>
       </section>
     </main>
   );
@@ -134,7 +134,7 @@ function BookmarkletLink({ href, onToast }) {
       ref={linkRef}
       className="bookmarklet-button"
       href="#install-bookmarklet"
-      onClick={(event) => { event.preventDefault(); onToast("Drag this button to Chrome’s bookmarks bar."); }}
+      onClick={(event) => { event.preventDefault(); onToast("Drag this button to your browser’s bookmarks bar."); }}
     >
       <LinkSimple /> ZenExpander
     </a>
@@ -494,7 +494,7 @@ function LivePreview({ config, expansion, onToast }) {
       await navigator.clipboard.writeText(text);
       onToast("Copied for a safe test. Nothing was sent.");
     } catch {
-      onToast("Chrome blocked clipboard access. Use the Setup scratchpad instead.");
+      onToast("Your browser blocked clipboard access. Use the Setup scratchpad instead.");
     }
   };
 
@@ -697,12 +697,12 @@ function Scratchpad({ config, onToast }) {
 function SetupPage({ config, bookmarkletHref, bridge, onToast }) {
   return (
     <main className="secondary-page setup-page">
-      <p className="eyebrow">Chrome first · zero installation</p>
+      <p className="eyebrow">Chrome + Edge desktop · zero installation</p>
       <h1>Install the bookmarklet in under a minute.</h1>
-      <p className="lede">Keep this configurator tab open, then drag the button to Chrome’s bookmarks bar. Run it once on each page or reload where you want expansions.</p>
+      <p className="lede">Keep this configurator tab open, then drag the button to your browser’s bookmarks bar. Run it once on each page or reload where you want expansions.</p>
       <div className="setup-grid">
         <section className="setup-step">
-          <span>01</span><h2>Show the bookmarks bar</h2><p>Press Ctrl+Shift+B in Chrome.</p>
+          <span>01</span><h2>Show the bookmarks bar</h2><p>Press Ctrl+Shift+B in Chrome or Edge.</p>
         </section>
         <section className="setup-step setup-drag">
           <span>02</span><h2>Drag this button</h2>
@@ -814,7 +814,7 @@ export function App() {
           setSavedConfig(cloneConfig(next));
         }
       })
-      .catch(() => setOnboardingError("Chrome could not open local storage for this site."))
+      .catch(() => setOnboardingError("Your browser could not open local storage for this site."))
       .finally(() => setLoading(false));
     fetch(`${import.meta.env.BASE_URL}zenexpander-bookmarklet.txt`)
       .then((response) => response.ok ? response.text() : "")
@@ -864,7 +864,7 @@ export function App() {
       setSavedConfig(cloneConfig(record.config));
       setOnboardingError("");
     } catch {
-      setOnboardingError("Chrome could not create the local workspace. Check site storage permissions.");
+      setOnboardingError("Your browser could not create the local workspace. Check site storage permissions.");
     }
   }, []);
 
