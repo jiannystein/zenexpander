@@ -33,6 +33,7 @@ test("configurator stays polished and undoable across required widths", async ({
   await createWorkspace(page);
   await expect(page.getByRole("heading", { name: "Add ZenExpander to your bookmarks bar." })).toBeVisible();
   await expect(page.getByText("Optional: use related tabs")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open the related-tab test" })).toHaveAttribute("href", "./multitab-lab.html");
 
   for (const width of [320, 375, 414, 768, 1280, 1440]) {
     await page.setViewportSize({ width, height: width < 600 ? 812 : 900 });
@@ -49,6 +50,10 @@ test("configurator stays polished and undoable across required widths", async ({
   }
 
   await page.getByRole("button", { name: /Expansions/ }).click();
+  const headingShortcut = page.locator(".editor-heading-shortcut");
+  await expect(headingShortcut).toBeVisible();
+  expect(await headingShortcut.evaluate((node) => getComputedStyle(node).color))
+    .not.toBe(await page.locator(".editor-pane h1").evaluate((node) => getComputedStyle(node).color));
   const tabs = page.getByRole("tab");
   const originalCount = await tabs.count();
   await page.getByRole("button", { name: /^Delete / }).first().click();
@@ -78,6 +83,9 @@ test("inline consent arms same-origin children lazily, cascades, reloads, and di
   await child.waitForLoadState("domcontentloaded");
   await expect(child.locator("#zenexpander-runtime")).toBeAttached();
   expect(await child.locator("#zenexpander-runtime").evaluate((host) => host.shadowRoot.querySelector(".panel").hidden)).toBe(true);
+  await child.getByRole("textbox", { name: "Unsaved ticket note" }).fill(";hello");
+  await expect(child.getByRole("option", { name: /;hello/ })).toBeVisible();
+  await child.keyboard.press("Escape");
   await child.getByRole("button", { name: "Open ZenExpander" }).click();
   await expect(child.getByText(/private expansions ready/)).toBeVisible();
   await expect(child.getByText("New tabs on · 127.0.0.1:4321")).toBeVisible();

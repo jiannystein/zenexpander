@@ -167,6 +167,8 @@ test("runtime requires exact-origin consent before best-effort child propagation
   assert.match(runtime, /runtime\.nativeOpen\.apply\(this, args\)/);
   assert.match(runtime, /type: "zen:create-child-port"/);
   assert.match(runtime, /installRuntime\(child, channel\.port2, \{ isChild: true \}\)/);
+  assert.match(runtime, /Loading your private expansions/);
+  assert.match(runtime, /this\.handleInput\(\{ composedPath: \(\) => \[this\.activeTarget\] \}\)/);
   assert.match(runtime, /Couldn’t open ZenExpander in that tab/);
   assert.doesNotMatch(runtime, /querySelectorAll\([^)]*target/);
 });
@@ -177,5 +179,7 @@ test("configurator exposes undoable deletion and session-only feature guidance",
   assert.match(app, /\}, 7_000\)/);
   assert.match(app, />Undo<\/button>/);
   assert.match(app, /Optional: use related tabs/);
+  assert.match(app, /editor-heading-shortcut/);
+  assert.match(app, /Google Search is not a compatible test/);
   assert.match(app, /Consent lasts for the browser session and is never saved, synced, or exported/);
 });

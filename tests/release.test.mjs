@@ -33,6 +33,7 @@ test("release contains the static app and bookmarklet bridge", async () => {
     "zenexpander-bridge.js",
     "zenexpander-bridge-worker.js",
     "zenexpander-leaf.png",
+    "multitab-lab.html",
   ]) {
     assert.equal(await exists(path.join(output, relative)), true, `Missing ${relative}`);
   }

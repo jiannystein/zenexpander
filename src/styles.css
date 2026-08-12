@@ -89,6 +89,7 @@ h1, h2 { min-width: 0; overflow-wrap: anywhere; }
 .workbench { display: grid; grid-template-columns: minmax(0, 2.08fr) minmax(350px, 1fr); min-height: calc(100vh - 169px); }
 .editor-pane { position: relative; z-index: 1; min-width: 0; padding: var(--space-3xl) var(--space-2xl) var(--space-xl); background: var(--paper); }
 .editor-pane h1, .secondary-page h1 { margin: 0 0 var(--space-md); font: 620 clamp(36px, 3.2vw, 48px)/1.05 var(--font-display); letter-spacing: -.025em; }
+.editor-heading-shortcut { color: var(--accent); font-weight: 650; }
 .basic-fields { display: grid; grid-template-columns: 92px 140px 155px; gap: var(--space-md); margin-bottom: var(--space-md); }
 .basic-fields label, .plain-editor, .sentence-edit { display: grid; gap: var(--space-2xs); color: var(--muted); font-size: 13px; }
 .basic-fields input, .basic-fields select, .sentence-edit textarea, .plain-editor textarea { width: 100%; border: 1px solid var(--rule-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); }
@@ -227,6 +228,7 @@ h1, h2 { min-width: 0; overflow-wrap: anywhere; }
 .new-tabs-guide h2, .new-tabs-guide h3 { margin: 0 0 var(--space-xs); font: 620 24px/1.2 var(--font-display); }
 .new-tabs-guide h3 { font-size: 20px; }
 .new-tabs-guide p, .recovery-note { margin: 0; color: var(--muted); line-height: 1.6; }
+.compatibility-lab-link { width: fit-content; margin-top: var(--space-md); text-decoration: none; }
 .recovery-note { padding: var(--space-md) 0; }
 .recovery-note strong { color: var(--ink); }
 .google-chat-note, .privacy-card { display: flex; gap: var(--space-md); padding: var(--space-lg); border: 1px solid var(--accent-soft); background: var(--teal-wash); }

@@ -539,6 +539,9 @@ class ZenRuntime {
       if (!this.node("search")) this.restoreSearchBody();
       this.setStatus(this.notice || `${this.config.expansions.length} private expansions ready.`);
       this.renderResults(this.query);
+      if (this.isChild && this.activeTarget) {
+        this.handleInput({ composedPath: () => [this.activeTarget] });
+      }
       return;
     }
     if (message?.type === "zen:origin-state" && message.origin === this.win.location.origin) {
@@ -833,7 +836,16 @@ class ZenRuntime {
   handleInput(event) {
     if (this.inserting) return;
     const target = editableFromEvent(event);
-    if (!this.config?.settings?.prefixTrigger || !target) return;
+    if (!target) return;
+    if (!this.config) {
+      if (this.isChild && !sensitiveReason(target)) {
+        this.activeTarget = target;
+        this.setStatus("Loading your private expansions…");
+        if (!this.configRequested) this.requestConfig();
+      }
+      return;
+    }
+    if (!this.config.settings.prefixTrigger) return;
     if (event.isTrusted) this.notice = "";
     if (sensitiveReason(target)) {
       this.close();

@@ -592,7 +592,7 @@ function ExpansionsPage({ config, setConfig, savedConfig, onSave, onDiscard, sav
       <ExpansionTabs config={config} activeId={expansion.id} pendingId={pendingDelete?.id} onSelect={setActiveId} onClose={deleteExpansion} onNew={addExpansion} />
       <div className="workbench">
         <main className="editor-pane">
-          <h1>What should {config.prefix}{expansion.shortcut || "shortcut"} say?</h1>
+          <h1>What should <span className="editor-heading-shortcut">{config.prefix}{expansion.shortcut || "shortcut"}</span> say?</h1>
           <ExpansionBasics config={config} expansion={expansion} onChange={updateExpansion} />
           {expansion.type === "choice" && <ChoiceEditor key={expansion.id} expansion={expansion} onChange={updateExpansion} />}
           {expansion.type === "direct" && <DirectEditor expansion={expansion} onChange={updateExpansion} />}
@@ -770,10 +770,11 @@ function SetupPage({ config, bookmarkletHref, bridge, onToast }) {
         <div>
           <h2 id="new-tabs-title">Useful for trusted, same-site pop-outs.</h2>
           <p>Good fits include CRM ticket windows, same-origin administration tabs, webmail compose windows, and knowledge-base articles opened by the current page.</p>
+          <a className="button button-secondary compatibility-lab-link" href="./multitab-lab.html" target="_blank" rel="noopener">Open the related-tab test</a>
         </div>
         <div>
-          <h3>Best effort, with a dependable fallback</h3>
-          <p>Only the same scheme, hostname, and port are included. Subdomains, different ports, cross-origin pages, isolated windows, and tabs the site does not expose safely still need the ZenExpander bookmark.</p>
+          <h3>Google Search is not a compatible test</h3>
+          <p>Search results usually leave Google, while right-click and Ctrl-click create browser-managed tabs. ZenExpander cannot safely attach to either. Test a same-origin app pop-out opened by the page, or use the test beside this note.</p>
         </div>
       </section>
       <p className="recovery-note"><strong>Keep a recovery copy.</strong> Export before switching browsers or clearing this site’s data. New-tab consent is never included in exports.</p>

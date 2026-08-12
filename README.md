@@ -60,7 +60,11 @@ This is useful for:
 
 The control is deliberately located in the widget, where ZenExpander can display the real site boundary. On first use, **Use in new tabs** shows the complete origin and asks for confirmation. An origin is the exact combination of scheme, hostname, and port: `https://support.example.com` does not include `http://support.example.com`, `https://admin.example.com`, or a different port.
 
-Consent lasts only for the current browser session. Compatible children receive a minimized launcher, and the full expansion catalog is requested only when that child opens ZenExpander. **Stop for new tabs** prevents later propagation but leaves launchers that are already running in place.
+Consent lasts only for the current browser session. Compatible children receive a minimized launcher, and the full expansion catalog is requested only when that child opens ZenExpander or starts typing in an editor. **Stop for new tabs** prevents later propagation but leaves launchers that are already running in place.
+
+To test the behavior without guessing whether a site is compatible, open the [related-tab test](https://jiannystein.github.io/zenexpander/multitab-lab.html), activate ZenExpander there, enable new tabs, and use its **Open compatible child tab** button. The child should show the launcher; typing `;hello` in its note box should lazily load the catalog and open the menu.
+
+Google Search results are not a Dynamics 365 simulation: result links normally leave `google.com`, and right-click or `Ctrl`-click creates a browser-managed tab without a usable page-owned window reference. Both conditions are intentionally outside ZenExpander's reach.
 
 > [!IMPORTANT]
 > This is best-effort browser assistance, not extension-level tab control. ZenExpander does not rewrite links or application routing. Cross-origin pages, subdomains, different ports, isolated or `noopener` windows, browser-managed links, and windows the source page cannot access safely remain untouched. Click the ZenExpander bookmark in that tab as the dependable fallback.

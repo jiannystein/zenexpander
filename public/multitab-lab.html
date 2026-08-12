@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ZenExpander related-tab test</title>
+  <style>
+    :root { color-scheme: light; font-family: "Segoe UI", system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; min-height: 100vh; padding: clamp(24px, 6vw, 72px); background: #faf6fb; color: #281431; }
+    main { width: min(720px, 100%); margin: 0 auto; }
+    h1 { max-width: 16ch; margin: 0 0 16px; font: 650 clamp(38px, 7vw, 62px)/1.02 Georgia, serif; letter-spacing: -.025em; }
+    p { max-width: 68ch; color: #594c61; line-height: 1.65; }
+    .steps { margin: 28px 0; padding: 24px; border: 1px solid #d8cfdf; background: #fff; }
+    .steps strong { color: #087168; }
+    button { min-height: 48px; padding: 0 18px; border: 1px solid #0a8276; border-radius: 5px; background: #0a8276; color: #fff; font: 700 15px/1 system-ui, sans-serif; cursor: pointer; }
+    button:focus-visible, [contenteditable]:focus-visible { outline: 3px solid #44d7ca; outline-offset: 3px; }
+    [contenteditable] { min-height: 128px; margin-top: 28px; padding: 16px; border: 1px solid #75697c; background: #fff; line-height: 1.6; }
+    [contenteditable]:empty::before { color: #726779; content: "Type ;hello here after the launcher appears"; }
+    .child-note { color: #087168; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="child-note" id="tab-state">Source tab · nothing is saved or sent</p>
+    <h1>Related-tab compatibility test</h1>
+    <div class="steps">
+      <p><strong>1.</strong> Click your ZenExpander bookmark on this page.</p>
+      <p><strong>2.</strong> In the widget, choose <b>Use in new tabs</b>, then confirm this exact origin.</p>
+      <p><strong>3.</strong> Use the button below. Do not right-click or Ctrl-click it.</p>
+    </div>
+    <button id="open-child" type="button">Open compatible child tab</button>
+    <div id="editor" contenteditable="true" role="textbox" aria-label="Unsaved ticket note"></div>
+  </main>
+  <script>
+    const child = new URLSearchParams(location.search).has("child");
+    if (child) document.getElementById("tab-state").textContent = "Child tab · launcher expected";
+    document.getElementById("open-child").addEventListener("click", () => {
+      window.open("./multitab-lab.html?child=1", "_blank");
+    });
+  </script>
+</body>
+</html>
