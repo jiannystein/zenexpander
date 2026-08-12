@@ -1,8 +1,12 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import packageMetadata from "./package.json" with { type: "json" };
 
 export default defineConfig({
   base: "./",
+  define: {
+    __ZENEXPANDER_VERSION__: JSON.stringify(packageMetadata.version),
+  },
   build: {
     outDir: "dist/client",
   },

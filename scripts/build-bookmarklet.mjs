@@ -10,6 +10,7 @@ const cacheDirectory = path.join(root, "node_modules", ".cache", "zenexpander");
 const runtimePath = path.join(cacheDirectory, "zenexpander-bookmarklet.min.js");
 const bookmarkletPath = path.join(outputDirectory, "zenexpander-bookmarklet.txt");
 const budget = 32 * 1024;
+const packageMetadata = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
 
 await mkdir(outputDirectory, { recursive: true });
 await mkdir(cacheDirectory, { recursive: true });
@@ -20,6 +21,7 @@ await build({
   format: "iife",
   platform: "browser",
   target: ["chrome120", "edge120"],
+  define: { __ZENEXPANDER_VERSION__: JSON.stringify(packageMetadata.version) },
   outfile: runtimePath,
   loader: { ".png": "dataurl" },
   legalComments: "none",

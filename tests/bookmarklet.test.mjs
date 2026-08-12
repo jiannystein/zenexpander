@@ -69,6 +69,25 @@ test("runtime uses the paired leaf launcher and lets Escape close every popup st
   assert.ok(keyHandler.indexOf('event.key === "Escape"') < keyHandler.indexOf("if (this.choice) {"));
 });
 
+test("release version is injected into the configurator, widget, and bookmark name", async () => {
+  const app = await readFile(path.join(root, "src", "App.jsx"), "utf8");
+  const runtime = await readFile(path.join(root, "src", "bookmarklet", "runtime.js"), "utf8");
+  const packageMetadata = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+  assert.match(app, /ZenExpander version \$\{APP_VERSION\}/);
+  assert.match(app, /ZenExpander v\{APP_VERSION\}/);
+  assert.match(runtime, /ZenExpander v\$\{APP_VERSION\}/);
+  assert.equal(packageMetadata.version, "0.2.0");
+});
+
+test("closing a Choices view restores normal prefix results", async () => {
+  const runtime = await readFile(path.join(root, "src", "bookmarklet", "runtime.js"), "utf8");
+  const closeMethod = runtime.slice(runtime.indexOf("  close() {"), runtime.indexOf("  toggle() {"));
+  assert.match(closeMethod, /restoreChoice/);
+  assert.match(closeMethod, /restoreSearchBody\(\)/);
+  assert.match(closeMethod, /renderResults\(""\)/);
+  assert.match(closeMethod, /this\.prefixMode = false/);
+});
+
 test("choice popup uses one primary action and exposes safe Escape and Enter shortcuts", async () => {
   const runtime = await readFile(path.join(root, "src", "bookmarklet", "runtime.js"), "utf8");
   assert.doesNotMatch(runtime, /textContent = "Back"/);

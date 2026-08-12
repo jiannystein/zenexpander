@@ -41,6 +41,7 @@ import { connectConfigurator, updateConfiguratorWorkspace } from "./bridge-clien
 import { createPairingToken, loadWorkspace, saveWorkspace } from "./storage.js";
 
 const LEAF_LOGO_URL = `${import.meta.env.BASE_URL}zenexpander-leaf.png`;
+const APP_VERSION = __ZENEXPANDER_VERSION__;
 const NAV_ITEMS = [
   { id: "expansions", label: "Expansions", note: "Step 1 · Build" },
   { id: "setup", label: "Setup", note: "Step 2 · Add" },
@@ -53,9 +54,12 @@ function LeafLogo({ inverted = false }) {
 
 function Brand() {
   return (
-    <div className="brand" aria-label="ZenExpander">
+    <div className="brand" aria-label={`ZenExpander version ${APP_VERSION}`}>
       <span className="brand-mark" aria-hidden="true"><LeafLogo /></span>
-      <span>ZenExpander</span>
+      <span className="brand-copy">
+        <span>ZenExpander</span>
+        <small className="brand-version">v{APP_VERSION}</small>
+      </span>
     </div>
   );
 }
@@ -134,7 +138,7 @@ function BookmarkletLink({ href, onToast }) {
       href="#install-bookmarklet"
       onClick={(event) => { event.preventDefault(); onToast("Drag this button to your browser’s bookmarks bar."); }}
     >
-      <LinkSimple /> ZenExpander
+      <LinkSimple /> ZenExpander v{APP_VERSION}
     </a>
   );
 }
@@ -867,6 +871,10 @@ export function App() {
   const [toast, setToast] = useState("");
   const [bridge, setBridge] = useState({ connected: false, message: "Preparing widget bridge…" });
   const autosaveTimer = useRef();
+
+  useEffect(() => {
+    document.title = `ZenExpander v${APP_VERSION} · Private text expansion`;
+  }, []);
 
   useEffect(() => {
     loadWorkspace()

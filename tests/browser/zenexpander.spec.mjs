@@ -31,7 +31,10 @@ async function openFixture(page) {
 
 test("configurator stays polished and undoable across required widths", async ({ page }) => {
   await createWorkspace(page);
+  await expect(page).toHaveTitle("ZenExpander v0.2.0 · Private text expansion");
   await expect(page.getByRole("heading", { name: "Add ZenExpander to your bookmarks bar." })).toBeVisible();
+  await expect(page.locator(".brand-version")).toHaveText("v0.2.0");
+  await expect(page.locator(".bookmarklet-button")).toContainText("ZenExpander v0.2.0");
   await expect(page.getByText("Optional: use related tabs")).toBeVisible();
   await expect(page.getByRole("link", { name: "Open the related-tab test" })).toHaveAttribute("href", "./multitab-lab.html");
 
@@ -89,6 +92,18 @@ test("inline consent arms same-origin children lazily, cascades, reloads, and di
   await child.getByRole("button", { name: "Open ZenExpander" }).click();
   await expect(child.getByText(/private expansions ready/)).toBeVisible();
   await expect(child.getByText("New tabs on · 127.0.0.1:4321")).toBeVisible();
+
+  const childEditor = child.getByRole("textbox", { name: "Unsaved ticket note" });
+  await childEditor.fill(";options");
+  await child.getByRole("option", { name: /;options/ }).click();
+  const confirmChoice = child.getByRole("button", { name: /Confirm and paste/ });
+  await expect(confirmChoice).toBeVisible();
+  await confirmChoice.click();
+  await expect(confirmChoice).toBeHidden();
+  await expect(childEditor).toContainText(/Hey, we have Beef/);
+  await childEditor.fill(";");
+  await expect(child.getByRole("option", { name: /;hello/ })).toBeVisible();
+  await expect(child.getByRole("option", { name: /;options/ })).toBeVisible();
 
   await child.getByRole("button", { name: "Minimize" }).click();
   const grandchildPromise = context.waitForEvent("page");

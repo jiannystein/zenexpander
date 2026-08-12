@@ -1,6 +1,7 @@
 import LEAF_ICON from "../../public/zenexpander-leaf.png";
 
 const ROOT_ID = "zenexpander-runtime";
+const APP_VERSION = __ZENEXPANDER_VERSION__;
 const PAIRING_TOKEN = "__ZENEXPANDER_PAIRING_TOKEN__";
 const BRIDGE_URL = "__ZENEXPANDER_BRIDGE_URL__";
 const BRIDGE_ORIGIN = new URL(BRIDGE_URL).origin;
@@ -335,11 +336,11 @@ class ZenRuntime {
     launcherLogo.alt = "";
     launcher.append(launcherLogo);
     const panel = this.create("section", "panel", "panel");
-    panel.setAttribute("aria-label", "ZenExpander");
+    panel.setAttribute("aria-label", `ZenExpander v${APP_VERSION}`);
     panel.setAttribute("aria-keyshortcuts", "Escape");
     panel.hidden = true;
     const head = this.create("div", "head");
-    const title = this.create("strong", "", "", "ZenExpander");
+    const title = this.create("strong", "", "", `ZenExpander v${APP_VERSION}`);
     const hint = this.create("small", "", "hint");
     const hintKey = this.create("kbd", "", "", "Esc");
     hint.append(hintKey, this.doc.createTextNode(" to close"));
@@ -758,10 +759,17 @@ class ZenRuntime {
   }
 
   close() {
+    const restoreChoice = Boolean(this.choice && this.config);
     this.node("panel").hidden = true;
     this.choice = null;
     this.confirmChoice = null;
+    this.prefixMode = false;
     this.anchorRect = null;
+    if (restoreChoice) {
+      this.restoreSearchBody();
+      this.setStatus(this.notice || `${this.config.expansions.length} private expansions ready.`);
+      this.renderResults("");
+    }
     this.activeTarget?.focus?.();
   }
 
