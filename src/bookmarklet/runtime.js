@@ -650,7 +650,7 @@ class ZenRuntime {
         }
         if (tracked.nav && child.location.href === "about:blank") return;
         const childDocument = child.document;
-        if (!childDocument?.documentElement || childDocument.readyState === "loading") return;
+        if (!childDocument?.documentElement) return;
         if (tracked.doc === childDocument || tracked.tried === childDocument) return;
         tracked.tried = childDocument;
         this.bootstrapChild(child);
@@ -664,7 +664,8 @@ class ZenRuntime {
         this.propagationFallback();
       }
     };
-    tracked.timer = this.win.setInterval(check, 240);
+    child.addEventListener("load", check);
+    tracked.timer = this.win.setInterval(check, 40);
     this.trackedWindows.set(child, tracked);
     check();
   }
@@ -842,8 +843,11 @@ class ZenRuntime {
   }
 
   handleInput(event) {
-    if (this.inserting) return;
     const target = editableFromEvent(event);
+    if (this.inserting) {
+      if (event.isTrusted && target) this.pendingInputTarget = target;
+      return;
+    }
     if (!target) return;
     if (!this.config) {
       if (this.isChild && !sensitiveReason(target)) {
@@ -861,7 +865,9 @@ class ZenRuntime {
     }
     const before = readBeforeCaret(target);
     const prefix = this.config.prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const match = before.match(new RegExp(`(?:^|\\s)${prefix}([a-z0-9_-]*)$`, "i"));
+    const continuation = this.savedRange?.target === target ? before.slice(this.lastInsertEnd) : "";
+    const match = before.match(new RegExp(`(?:^|\\s)${prefix}([a-z0-9_-]*)$`, "i"))
+      ?? continuation.match(new RegExp(`^${prefix}([a-z0-9_-]*)$`, "i"));
     if (!match) {
       if (this.prefixMode) this.close();
       return;
@@ -1022,6 +1028,7 @@ class ZenRuntime {
     const before = editableText(target);
     const doc = documentFor(target);
     let inserted = false;
+    this.pendingInputTarget = null;
     this.inserting = true;
     try {
       target.focus();
@@ -1034,7 +1041,9 @@ class ZenRuntime {
         }
       } else {
         const selection = selectionFor(target);
-        const liveRange = rangeFromOffsets(target, range.start, range.end);
+        const liveRange = range.range?.commonAncestorContainer?.isConnected
+          ? range.range
+          : rangeFromOffsets(target, range.start, range.end);
         selection.removeAllRanges();
         selection.addRange(liveRange);
         inserted = Boolean(doc.execCommand?.("insertText", false, text));
@@ -1086,8 +1095,14 @@ class ZenRuntime {
         this.win.prompt("Copy this text, then paste it:", text);
       }
     }
+    this.lastInsertEnd = range.start + text.length;
+    const pendingInputTarget = this.pendingInputTarget;
+    this.pendingInputTarget = null;
     this.notice = "";
     this.close();
+    if (pendingInputTarget) {
+      this.handleInput({ composedPath: () => [pendingInputTarget], isTrusted: 1 });
+    }
   }
 
   boot() {

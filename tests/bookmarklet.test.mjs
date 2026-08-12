@@ -76,7 +76,7 @@ test("release version is injected into the configurator, widget, and bookmark na
   assert.match(app, /ZenExpander version \$\{APP_VERSION\}/);
   assert.match(app, /ZenExpander v\{APP_VERSION\}/);
   assert.match(runtime, /ZenExpander v\$\{APP_VERSION\}/);
-  assert.equal(packageMetadata.version, "0.2.0");
+  assert.equal(packageMetadata.version, "0.2.1");
 });
 
 test("closing a Choices view restores normal prefix results", async () => {
@@ -86,6 +86,17 @@ test("closing a Choices view restores normal prefix results", async () => {
   assert.match(closeMethod, /restoreSearchBody\(\)/);
   assert.match(closeMethod, /renderResults\(""\)/);
   assert.match(closeMethod, /this\.prefixMode = false/);
+});
+
+test("runtime installs child launchers during loading and queues immediate repeated prefixes", async () => {
+  const runtime = await readFile(path.join(root, "src", "bookmarklet", "runtime.js"), "utf8");
+  assert.doesNotMatch(runtime, /childDocument\.readyState === "loading"/);
+  assert.match(runtime, /child\.addEventListener\("load", check\)/);
+  assert.match(runtime, /setInterval\(check, 40\)/);
+  assert.match(runtime, /this\.pendingInputTarget = target/);
+  assert.match(runtime, /this\.savedRange\?\.target === target/);
+  assert.match(runtime, /before\.slice\(this\.lastInsertEnd\)/);
+  assert.match(runtime, /if \(pendingInputTarget\)/);
 });
 
 test("choice popup uses one primary action and exposes safe Escape and Enter shortcuts", async () => {
@@ -170,7 +181,8 @@ test("runtime reconstructs a live editor range and verifies insertion", async ()
   const runtime = await readFile(path.join(root, "src", "bookmarklet", "runtime.js"), "utf8");
   assert.match(runtime, /function rangeFromOffsets/);
   assert.match(runtime, /beforeCaret\.toString\(\)\.length/);
-  assert.match(runtime, /const liveRange = rangeFromOffsets/);
+  assert.match(runtime, /range\.range\?\.commonAncestorContainer\?\.isConnected/);
+  assert.match(runtime, /: rangeFromOffsets\(target, range\.start, range\.end\)/);
   assert.match(runtime, /await waitForEditor\(this\.win\)/);
   assert.match(runtime, /setTimeout\(resolve, 260\)/);
   assert.match(runtime, /containsInsertedText\(target, text\)/);

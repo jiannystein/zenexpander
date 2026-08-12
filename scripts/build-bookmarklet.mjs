@@ -33,7 +33,7 @@ const optimized = await minify(bundled, {
   mangle: {
     toplevel: true,
     properties: {
-      regex: /^(?:win|doc|host|shadow|bridgeWindow|bridgePort|isChild|configRequested|originArmed|originConsented|consentOpen|nativeOpen|openWrapper|trackedWindows|poll|activeTarget|savedRange|prefixMode|query|anchorRect|results|activeIndex|choice|confirmChoice|documents|frames|observers|inserting|notice|node|create|build|watchFrameContent|watchFrame|watchDocument|setStatus|renderOriginControl|cancelOriginConsent|armOrigin|disarmOrigin|attachPort|handleWindowMessage|handleBridge|requestConfig|connect|installOpenInterceptor|removeOpenInterceptor|propagationFallback|trackOpenedWindow|bootstrapChild|showDisconnected|restoreSearchBody|handleFocus|captureTarget|open|close|toggle|shortcutMatches|handleKeydown|handleInput|positionNear|renderResults|paintActive|choose|showChoice|insert|boot)$/,
+      regex: /^(?:win|doc|host|shadow|bridgeWindow|bridgePort|isChild|configRequested|originArmed|originConsented|consentOpen|nativeOpen|openWrapper|trackedWindows|poll|activeTarget|savedRange|prefixMode|query|anchorRect|results|activeIndex|choice|confirmChoice|documents|frames|observers|inserting|pendingInputTarget|lastInsertEnd|notice|node|create|build|watchFrameContent|watchFrame|watchDocument|setStatus|renderOriginControl|cancelOriginConsent|armOrigin|disarmOrigin|attachPort|handleWindowMessage|handleBridge|requestConfig|connect|installOpenInterceptor|removeOpenInterceptor|propagationFallback|trackOpenedWindow|bootstrapChild|showDisconnected|restoreSearchBody|handleFocus|captureTarget|open|close|toggle|shortcutMatches|handleKeydown|handleInput|positionNear|renderResults|paintActive|choose|showChoice|insert|boot)$/,
     },
   },
   ecma: 2022,

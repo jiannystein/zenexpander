@@ -43,7 +43,8 @@ test("bookmarklet covers reachable embedded editors and keeps blocked insertion 
   assert.match(runtime, /MutationObserver/);
   assert.match(runtime, /target\?\.ownerDocument/);
   assert.match(runtime, /function viewportRect/);
-  assert.match(runtime, /if \(this\.inserting\) return/);
+  assert.match(runtime, /if \(this\.inserting\)/);
+  assert.match(runtime, /this\.pendingInputTarget = target/);
   assert.match(runtime, /this\.notice = "This editor blocked direct insertion/);
   assert.match(runtime, /this\.open\(false\)/);
 });

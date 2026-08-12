@@ -31,10 +31,10 @@ async function openFixture(page) {
 
 test("configurator stays polished and undoable across required widths", async ({ page }) => {
   await createWorkspace(page);
-  await expect(page).toHaveTitle("ZenExpander v0.2.0 · Private text expansion");
+  await expect(page).toHaveTitle("ZenExpander v0.2.1 · Private text expansion");
   await expect(page.getByRole("heading", { name: "Add ZenExpander to your bookmarks bar." })).toBeVisible();
-  await expect(page.locator(".brand-version")).toHaveText("v0.2.0");
-  await expect(page.locator(".bookmarklet-button")).toContainText("ZenExpander v0.2.0");
+  await expect(page.locator(".brand-version")).toHaveText("v0.2.1");
+  await expect(page.locator(".bookmarklet-button")).toContainText("ZenExpander v0.2.1");
   await expect(page.getByText("Optional: use related tabs")).toBeVisible();
   await expect(page.getByRole("link", { name: "Open the related-tab test" })).toHaveAttribute("href", "./multitab-lab.html");
 
@@ -84,7 +84,7 @@ test("inline consent arms same-origin children lazily, cascades, reloads, and di
   await source.getByRole("button", { name: "Open same-origin ticket" }).click();
   const child = await childPromise;
   await child.waitForLoadState("domcontentloaded");
-  await expect(child.locator("#zenexpander-runtime")).toBeAttached();
+  await expect(child.locator("#zenexpander-runtime")).toBeAttached({ timeout: 1_000 });
   expect(await child.locator("#zenexpander-runtime").evaluate((host) => host.shadowRoot.querySelector(".panel").hidden)).toBe(true);
   await child.getByRole("textbox", { name: "Unsaved ticket note" }).fill(";hello");
   await expect(child.getByRole("option", { name: /;hello/ })).toBeVisible();
@@ -104,6 +104,12 @@ test("inline consent arms same-origin children lazily, cascades, reloads, and di
   await childEditor.fill(";");
   await expect(child.getByRole("option", { name: /;hello/ })).toBeVisible();
   await expect(child.getByRole("option", { name: /;options/ })).toBeVisible();
+
+  await child.keyboard.press("Escape");
+  await childEditor.fill(";hello");
+  await child.getByRole("option", { name: /;hello/ }).click();
+  await childEditor.pressSequentially(";hello", { delay: 0 });
+  await expect(child.getByRole("option", { name: /;hello/ })).toBeVisible();
 
   await child.getByRole("button", { name: "Minimize" }).click();
   const grandchildPromise = context.waitForEvent("page");
@@ -126,6 +132,28 @@ test("inline consent arms same-origin children lazily, cascades, reloads, and di
   const unarmed = await unarmedPromise;
   await unarmed.waitForLoadState("domcontentloaded");
   await expect(unarmed.locator("#zenexpander-runtime")).toHaveCount(0);
+  await context.close();
+});
+
+test("direct expansions can run back to back with or without intervening text", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const configurator = await context.newPage();
+  const href = await createWorkspace(configurator);
+
+  for (const suffix of [";hello", "asdasd ;hello"]) {
+    const page = await context.newPage();
+    await openFixture(page);
+    await activateBookmarklet(page, href);
+    const editor = page.getByRole("textbox", { name: "Unsaved ticket note" });
+    await editor.fill(";hello");
+    await page.keyboard.press("Enter");
+    await editor.pressSequentially(suffix, { delay: 0 });
+    await expect(page.getByRole("option", { name: /;hello/ })).toBeVisible();
+    await page.keyboard.press("Enter");
+    await expect(editor).toContainText(/Hello, how are you\?.*Hello, how are you\?/);
+    await page.close();
+  }
+
   await context.close();
 });
 
