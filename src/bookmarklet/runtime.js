@@ -845,7 +845,7 @@ class ZenRuntime {
   handleInput(event) {
     const target = editableFromEvent(event);
     if (this.inserting) {
-      if (event.isTrusted && target) this.pendingInputTarget = target;
+      if (target) this.pendingInputTarget = target;
       return;
     }
     if (!target) return;
@@ -1030,6 +1030,7 @@ class ZenRuntime {
     let inserted = false;
     this.pendingInputTarget = null;
     this.inserting = true;
+    this.close();
     try {
       target.focus();
       if (range.kind === "text") {
@@ -1099,7 +1100,6 @@ class ZenRuntime {
     const pendingInputTarget = this.pendingInputTarget;
     this.pendingInputTarget = null;
     this.notice = "";
-    this.close();
     if (pendingInputTarget) {
       this.handleInput({ composedPath: () => [pendingInputTarget], isTrusted: 1 });
     }

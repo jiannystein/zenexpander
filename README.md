@@ -1,7 +1,7 @@
 <div align="center">
   <img src="public/zenexpander-leaf.png" width="88" alt="ZenExpander paired-leaf logo">
   <h1>ZenExpander</h1>
-  <p><strong>Current release: v0.2.1</strong></p>
+  <p><strong>Current release: v0.2.2</strong></p>
   <p><strong>A calm, private text expander for Chrome and Edge—no installation required.</strong></p>
   <p>
     <a href="https://jiannystein.github.io/zenexpander/"><strong>Open ZenExpander</strong></a>
@@ -38,7 +38,7 @@ ZenExpander brings Espanso-style shortcuts to company-managed Chrome and Edge de
 
 1. Open the [live configurator](https://jiannystein.github.io/zenexpander/) and choose **Create local config**.
 2. Open **Setup** and press `Ctrl+Shift+B` to show the Chrome or Edge bookmarks bar.
-3. Drag the versioned **ZenExpander v0.2.1** button to the bookmarks bar. Do not click it.
+3. Drag the versioned **ZenExpander v0.2.2** button to the bookmarks bar. Do not click it.
 4. Keep the configurator open, visit a trusted page, and click the bookmark.
 5. Type `;hello`, or press `Ctrl+Shift+Space`, and select an expansion.
 6. Optional: in the widget, choose **Use in new tabs** and review the exact origin before confirming.

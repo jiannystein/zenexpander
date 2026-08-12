@@ -1,6 +1,6 @@
 {
   "name": "zenexpander",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "Privacy-first, zero-install text expansion for Chrome.",
   "license": "MIT",

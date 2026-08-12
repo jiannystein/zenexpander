@@ -76,7 +76,7 @@ test("release version is injected into the configurator, widget, and bookmark na
   assert.match(app, /ZenExpander version \$\{APP_VERSION\}/);
   assert.match(app, /ZenExpander v\{APP_VERSION\}/);
   assert.match(runtime, /ZenExpander v\$\{APP_VERSION\}/);
-  assert.equal(packageMetadata.version, "0.2.1");
+  assert.equal(packageMetadata.version, "0.2.2");
 });
 
 test("closing a Choices view restores normal prefix results", async () => {
@@ -97,6 +97,8 @@ test("runtime installs child launchers during loading and queues immediate repea
   assert.match(runtime, /this\.savedRange\?\.target === target/);
   assert.match(runtime, /before\.slice\(this\.lastInsertEnd\)/);
   assert.match(runtime, /if \(pendingInputTarget\)/);
+  const insertMethod = runtime.slice(runtime.indexOf("  async insert(text) {"), runtime.indexOf("  boot() {"));
+  assert.ok(insertMethod.indexOf("this.close();") < insertMethod.indexOf("    try {"));
 });
 
 test("choice popup uses one primary action and exposes safe Escape and Enter shortcuts", async () => {
