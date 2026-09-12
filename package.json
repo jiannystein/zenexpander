@@ -24,10 +24,10 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1",
-    "@vitejs/plugin-react": "^6.0.5",
-    "esbuild": "^0.28.1",
-    "terser": "^5.49.1",
-    "vite": "^8.2.0"
+    "@playwright/test": "^1.63.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "esbuild": "^0.28.2",
+    "terser": "^5.51.2",
+    "vite": "^8.2.2"
   }
 }
